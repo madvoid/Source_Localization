@@ -1,0 +1,17 @@
+!QUIC 6.1
+1			!Number of sources
+1			!Number of source nodes
+!Start of source number 1
+Source 1 !source name
+1			!Source strength units (1 = g, 2 = g/s, 3 = L,4 = L/s)
+1500			!Source Strength
+2			!Source Density (kg/m^3) [Only used for Volume based source strengths]
+2			!Release Type: =1 for instantaneous;=2 for continuous; =3 for discrete continous
+0			!Source start time (s)
+0			!Source duration (s)
+1			!Source geometry (1 = spherical shell, 2 = line, 3 = cylinder, 4 = Explosive, 5 = Area, 6 = Moving Point, 7 = spherical volume, 8 = Submunitions, 9 = 3D array, 10 = Pipe, 11 = Horizontal Cylindrical Tank, 12 = Vertical Cylindrical Tank, 13 = Spherical Tank)
+720			!x coord of center of sphere (m)
+940			!y coord of center of sphere (m)
+5			!z coord of center of sphere (m)
+2			!radius of sphere (m)
+!End of source number 1
