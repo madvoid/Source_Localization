@@ -21,8 +21,7 @@ The file `Domain_Maker.m` creates a file called `Data.mat` in a run's given fold
 PSO has several different parameters and hyperparameters that can be modified, as well as several modifications that can be made. The following list presents, in no particular order, things that can be modified with this implementation of PSO.
 
 * Velocity update constants `c1, c2`
-* Inertia weight equation
-  * Inertia weight constants
+* Velocity clamping options or inertia weight decrease
 * Boundary offset
 * Moving integer vs real number
 * Incorporate wind into velocity update

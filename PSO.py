@@ -47,7 +47,7 @@ class DomainInfo:
 
 
 class Particle:
-    def __init__(self, domainClass):
+    def __init__(self, domainClass, costArray):
         """
         Initialize particle for PSO
 
@@ -55,21 +55,20 @@ class Particle:
         """
         self.domain = domainClass  # Current domain
         self.position = np.random.uniform(self.domain.minLims, self.domain.maxLims)  # Initial position, 1xnDim array
-        self.positionIndex = self.getIndex(
-            self.position)  # Index of initial position, 1xnDim tuple (is a tuple for accessing elements)
+        # self.positionIndex = self.getIndex()  # Index of initial position,
         self.velocity = np.random.random_sample(
             self.domain.dimension) * 0.1  # Initial velocity, multiply by 0.1 so no explode, same size as position
-        self.pBestPos = self.position  # Best location of particle
-        self.currentFitness = None     # Current fitness of particle
+        self.currentFitness = self.updateFitness(costArray)     # Current fitness of particle
+        self.pBestPosition = self.position  # Best location of particle
+        self.pBestFitness = self.currentFitness
 
-    def getIndex(self, point):
+    def getIndex(self):
         """
         Get matrix index of a given point in the domain
 
-        :param point: Point you need index of in x,y,z coords
-        :return: The index of the input point. This is to be used with the meshgrid matrices, not the 1-dim matrices!
+        :return: The index of current position. This is to be used with the meshgrid matrices, not the 1-dim matrices! 1xnDim tuple (is a tuple for accessing elements)
         """
-        indexRaw = ((point - self.domain.minLims) / self.domain.ds).astype(int)
+        indexRaw = ((self.position - self.domain.minLims) / self.domain.ds).astype(int)
         indexRaw[0], indexRaw[1] = indexRaw[1], indexRaw[0]  # Switch first and second spots since x,y need to be flipped when accessing 2D array since x corresponds to columns and y corresponds to rows
         return tuple(indexRaw)
 
@@ -80,7 +79,7 @@ class Particle:
         :param costArray: Cost function array, will be passed in
         :return: current fitness value in case it's needed outside of class
         """
-        self.currentFitness = costArray[self.positionIndex]
+        self.currentFitness = costArray[self.getIndex()]
         return self.currentFitness
 
 
@@ -92,15 +91,48 @@ class PSO:
         self.domain = domainClass           # DomainInfo instance about current domain
         self.maxIter = maximumIterations    # Maximum number of iterations
         self.numParticles = numberParticles # Number of particles
-        self.particles = [Particle(domainClass) for _ in range(self.numParticles)]  # Initialize particles
-        self.bestParticle = None            # Don't get best particle yet
-        for particle in self.particles:     # Find cost of all particles
-            particle.updateFitness(self.costArray)
-        self.getBestParticle()              # Find best particle
+        self.particles = [Particle(domainClass, costArray) for _ in range(self.numParticles)]  # Initialize particles
+        self.globalBest = None            # Don't get best particle yet
+        self.getGlobalBest()              # Find best particle
+        self.bestPositionHistory = np.zeros([self.maxIter, self.domain.dimension])  # Keep track of best position found
+        self.bestFitnessHistory = np.zeros(self.maxIter)    # Keep track of best fitness so far
+        self.bestPositionHistory[0,:] = self.globalBest.position
+        self.bestFitnessHistory[0] = self.globalBest.currentFitness
 
-    def getBestParticle(self):
+    def getGlobalBest(self):
+        """
+        Find best particle out of all particles. Updates best particle as well
+
+        :return: None
+        """
         bestParticleIndex = np.argmin([particle.currentFitness for particle in self.particles])
-        self.bestParticle = self.particles[bestParticleIndex]
+        self.globalBest = self.particles[bestParticleIndex]
+
+    def run(self):
+        c1 = 2
+        c2 = 2
+        k = 0.1
+        vMax = k*(self.domain.maxLims - self.domain.minLims)/2
+        vMin = -1*vMax
+        for iter in range(1, self.maxIter):
+            R1 = np.random.rand(self.domain.dimension)
+            R2 = np.random.rand(self.domain.dimension)
+            for particle in self.particles:
+                # Create new velocity and clamp it
+                newVel = particle.velocity + c1*(particle.pBestPosition-particle.position)*R1 + c2*(self.globalBest.position-particle.position)*R2
+                newVel[newVel > vMax] = vMax[newVel > vMax]
+                newVel[newVel < vMin] = vMin[newVel < vMin]
+
+                # Update velocity, position, fitness
+                particle.velocity = newVel
+                particle.position = particle.position+particle.velocity
+                particle.updateFitness(self.costArray)
+                if particle.currentFitness < particle.pBestFitness: # Minimizing, not maximizing!!
+                    particle.pBestFitness = particle.currentFitness
+                    particle.pBestPosition = particle.position.copy()
+                pass    # TODO: Implement no go zones and boundaries
+        # TODO: Update global best
+        # TODO: Record global best position and value
 
 
 
@@ -139,4 +171,5 @@ if __name__ == "__main__":
 
     # Initialize PSO Algorithm
     AckleyPSO = PSO(C, AckleyDomain)
+    AckleyPSO.run()
     pass
