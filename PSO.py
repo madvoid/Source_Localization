@@ -9,8 +9,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-
-
+from copy import deepcopy
 
 
 class DomainInfo:
@@ -44,8 +43,6 @@ class DomainInfo:
         return f'Domain from {self.minLims} to {self.maxLims} with {self.ds} spacing'
 
 
-
-
 class Particle:
     def __init__(self, domainClass, costArray):
         """
@@ -58,7 +55,7 @@ class Particle:
         # self.positionIndex = self.getIndex()  # Index of initial position,
         self.velocity = np.random.random_sample(
             self.domain.dimension) * 0.1  # Initial velocity, multiply by 0.1 so no explode, same size as position
-        self.currentFitness = self.updateFitness(costArray)     # Current fitness of particle
+        self.currentFitness = self.updateFitness(costArray)  # Current fitness of particle
         self.pBestPosition = self.position  # Best location of particle
         self.pBestFitness = self.currentFitness
 
@@ -69,7 +66,8 @@ class Particle:
         :return: The index of current position. This is to be used with the meshgrid matrices, not the 1-dim matrices! 1xnDim tuple (is a tuple for accessing elements)
         """
         indexRaw = ((self.position - self.domain.minLims) / self.domain.ds).astype(int)
-        indexRaw[0], indexRaw[1] = indexRaw[1], indexRaw[0]  # Switch first and second spots since x,y need to be flipped when accessing 2D array since x corresponds to columns and y corresponds to rows
+        indexRaw[0], indexRaw[1] = indexRaw[1], indexRaw[
+            0]  # Switch first and second spots since x,y need to be flipped when accessing 2D array since x corresponds to columns and y corresponds to rows
         return tuple(indexRaw)
 
     def updateFitness(self, costArray):
@@ -83,20 +81,19 @@ class Particle:
         return self.currentFitness
 
 
-
-
 class PSO:
     def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000):
-        self.costArray = costArray          # Array of values of cost function
-        self.domain = domainClass           # DomainInfo instance about current domain
-        self.maxIter = maximumIterations    # Maximum number of iterations
-        self.numParticles = numberParticles # Number of particles
+        self.costArray = costArray  # Array of values of cost function
+        self.domain = domainClass  # DomainInfo instance about current domain
+        self.maxIter = maximumIterations  # Maximum number of iterations
+        self.numParticles = numberParticles  # Number of particles
         self.particles = [Particle(domainClass, costArray) for _ in range(self.numParticles)]  # Initialize particles
-        self.globalBest = None            # Don't get best particle yet
-        self.getGlobalBest()              # Find best particle
+        self.globalBest = self.particles[0]  # Just set best particle to first one for now
+        self.globalBestIndex = 0
+        self.getGlobalBest()  # Find best particle
         self.bestPositionHistory = np.zeros([self.maxIter, self.domain.dimension])  # Keep track of best position found
-        self.bestFitnessHistory = np.zeros(self.maxIter)    # Keep track of best fitness so far
-        self.bestPositionHistory[0,:] = self.globalBest.position
+        self.bestFitnessHistory = np.zeros(self.maxIter)  # Keep track of best fitness so far
+        self.bestPositionHistory[0, :] = self.globalBest.position
         self.bestFitnessHistory[0] = self.globalBest.currentFitness
 
     def getGlobalBest(self):
@@ -106,45 +103,86 @@ class PSO:
         :return: None
         """
         bestParticleIndex = np.argmin([particle.currentFitness for particle in self.particles])
-        self.globalBest = self.particles[bestParticleIndex]
+        bestParticle = self.particles[bestParticleIndex]
+        if bestParticle.currentFitness < self.globalBest.currentFitness:
+            self.globalBestIndex = bestParticleIndex
+            self.globalBest = deepcopy(bestParticle)
 
-    def run(self):
+    def generateVelocity(self, particle):
+        """
+        Generate new velocity for particle class
+
+        :param particle: Instance of Particle class
+        :return: New velocity, ndarray of size 1xnDim. Particle is NOT updated in this function
+        """
+        # Establish Constants
         c1 = 2
         c2 = 2
         k = 0.1
-        vMax = k*(self.domain.maxLims - self.domain.minLims)/2
-        vMin = -1*vMax
-        for iter in range(1, self.maxIter):
-            R1 = np.random.rand(self.domain.dimension)
-            R2 = np.random.rand(self.domain.dimension)
+        vMax = k * (self.domain.maxLims - self.domain.minLims) / 2
+        vMin = -1 * vMax
+
+        # Create new velocity and clamp it
+        R1 = np.random.rand(self.domain.dimension)
+        R2 = np.random.rand(self.domain.dimension)
+        newVel = particle.velocity + c1 * (particle.pBestPosition - particle.position) * R1 + c2 * (
+                self.globalBest.position - particle.position) * R2
+        newVel[newVel > vMax] = vMax[newVel > vMax]
+        newVel[newVel < vMin] = vMin[newVel < vMin]
+        return newVel
+
+    def checkPosition(self, position):
+        """
+        Check a given position to see if particle can move to it
+
+        :param position: New position value, ndarray of size 1xnDim
+        :return: Boolean indicating whether position is "allowed". True is allowed, false is not allowed
+        """
+        inLims = all(position > self.domain.minLims) and all(position < self.domain.maxLims)    # Will be true if within boundary
+        if not inLims:
+            return False
+        else:
+            return True
+        # TODO: Add nogo zones, set of nogo indices
+
+    def run(self):
+        for i in range(1, self.maxIter):
             for particle in self.particles:
-                # Create new velocity and clamp it
-                newVel = particle.velocity + c1*(particle.pBestPosition-particle.position)*R1 + c2*(self.globalBest.position-particle.position)*R2
-                newVel[newVel > vMax] = vMax[newVel > vMax]
-                newVel[newVel < vMin] = vMin[newVel < vMin]
+                # Generate new velocity
+                while True:
+                    newVel = self.generateVelocity(particle)
+                    newPos = particle.position + newVel
+                    if self.checkPosition(newPos):
+                        break
 
                 # Update velocity, position, fitness
                 particle.velocity = newVel
-                particle.position = particle.position+particle.velocity
+                particle.position = newPos
                 particle.updateFitness(self.costArray)
-                if particle.currentFitness < particle.pBestFitness: # Minimizing, not maximizing!!
+                if particle.currentFitness <= particle.pBestFitness:  # Minimizing, not maximizing!!
                     particle.pBestFitness = particle.currentFitness
                     particle.pBestPosition = particle.position.copy()
-                pass    # TODO: Implement no go zones and boundaries
-        # TODO: Update global best
-        # TODO: Record global best position and value
 
+            # Update global best and history
+            print(" ")
+            self.getGlobalBest()
+            self.bestPositionHistory[i,:] = self.globalBest.position
+            self.bestFitnessHistory[i] = self.globalBest.currentFitness
 
+            # Print
+            print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
 
 if __name__ == "__main__":
     @np.vectorize
     def ackley(x1, x2):
+        #TODO: Test different functions
         return -20 * np.exp(-0.2 * np.sqrt(0.5 * (x1 ** 2 + x2 ** 2))) - np.exp(
             0.5 * (np.cos(2 * np.pi * x1) + np.cos(2 * np.pi * x2))) + 20 + np.exp(1)
 
 
     # Create domain
+    # TODO: Play with domain
     xMin = -32
     xMax = 32
     yMin = -25
@@ -162,14 +200,20 @@ if __name__ == "__main__":
                               [(xMax - xMin) / (xPoints - 1), (yMax - yMin) / (yPoints - 1)], [xPoints, yPoints], 3600,
                               900, 4, [X[minIdx], Y[minIdx]])
 
+    # Initialize and run PSO Algorithm
+    AckleyPSO = PSO(C, AckleyDomain)
+    AckleyPSO.run()
+
     # Plot Ackley function
+    # TODO figure out final and animated plots
     fig, ax = plt.subplots()
     # ax = plt.axes(projection='3d')
     # ax.plot_surface(X, Y, C, cmap='viridis', edgecolor='none')
     ax.pcolormesh(X, Y, C)
     plt.show()
 
-    # Initialize PSO Algorithm
-    AckleyPSO = PSO(C, AckleyDomain)
-    AckleyPSO.run()
-    pass
+    fig1, ax1 = plt.subplots()
+    ax1.plot(AckleyPSO.bestFitnessHistory)
+    plt.show()
+
+    print("Done")
