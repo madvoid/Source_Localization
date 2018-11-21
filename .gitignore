@@ -2,6 +2,10 @@
 # Created by https://www.gitignore.io/api/python,matlab,pycharm
 # Edit at https://www.gitignore.io/?templates=python,matlab,pycharm
 
+# Animation files
+*.gif
+*.mp4
+
 ### Matlab ###
 # Windows default autosave extension
 *.asv
