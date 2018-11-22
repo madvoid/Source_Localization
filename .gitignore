@@ -2,6 +2,9 @@
 # Created by https://www.gitignore.io/api/python,matlab,pycharm
 # Edit at https://www.gitignore.io/?templates=python,matlab,pycharm
 
+# Results (For Now)
+Results/
+
 # Animation files
 *.gif
 *.mp4

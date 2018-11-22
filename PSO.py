@@ -3,13 +3,11 @@
 #
 # Author: Nipun Gunawardena
 #
-# Purpose: Create PSO library for use with discrete grids. Running by itself will show a demo using
-#          Ackley function.
+# Purpose: PSO library for use with discrete grids
 # -------------------------------------------------------------------------------------------------
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 from copy import deepcopy
 
 
@@ -42,6 +40,12 @@ class DomainInfo:
 
     def __repr__(self):
         return f'Domain from {self.minLims} to {self.maxLims} with {self.ds} spacing'
+
+
+
+
+
+
 
 
 class Particle:
@@ -94,6 +98,12 @@ class Particle:
         """
         self.fitnessHistory[currentIteration] = self.currentFitness
         self.positionHistory[currentIteration, :] = self.position
+
+
+
+
+
+
 
 
 class PSO:
@@ -195,83 +205,26 @@ class PSO:
             print(
                 f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
-    def plotPath(self, X, Y):
-        """
-        Plot path on 2D pcolor plot. May need to be fixed when switching to 3D
-
-        :param X: X array from meshgrid produced outside class
-        :param Y: Y array from meshgrid produced outside class
-        :return: None
-        """
-        fig, ax = plt.subplots()
-        ax.pcolormesh(X, Y, self.costArray, cmap='viridis', edgecolor='none')
-        ax.plot(self.bestPositionHistory[:,0], self.bestPositionHistory[:,1], color='r', linestyle=':', marker='.')
-        plt.show()
-
     def plotConvergence(self):
         """
         Plot best fitness of all particles vs iteration
 
-        :return: None
+        :return: Handle for figure
         """
         fig, ax = plt.subplots()
         ax.plot(self.bestFitnessHistory)
+        ax.set_title('Convergence')
         plt.show()
+        return fig
+
+    def getCurrentPoints(self, iteration):
+        """
+        Return the position of all the particles at a given iteration. Useful for animating plots
+
+        :param iteration: Iteration of PSO where position for all particles is desired
+        :return: Array of positions of all particles at given iteration
+        """
+        return np.array([p.positionHistory[iteration,:] for p in self.particles])
 
 
-if __name__ == "__main__":
-    @np.vectorize
-    def ackley(x1, x2):
-        # TODO: Test different functions, 3D functions
-        return -20 * np.exp(-0.2 * np.sqrt(0.5 * (x1 ** 2 + x2 ** 2))) - np.exp(
-            0.5 * (np.cos(2 * np.pi * x1) + np.cos(2 * np.pi * x2))) + 20 + np.exp(1)
 
-    def getCurrentPoints(psoClass, iteration):
-        return np.array([p.positionHistory[iteration,:] for p in psoClass.particles])
-
-
-
-    # Create domain
-    xMin = -32
-    xMax = 32
-    yMin = -30
-    yMax = 30
-    xPoints = 105
-    yPoints = 100
-    x = np.linspace(xMin, xMax, num=xPoints)
-    y = np.linspace(yMin, yMax, num=yPoints)
-    (X, Y) = np.meshgrid(x, y, indexing='xy')  # Create meshgrid
-    C = ackley(X, Y)  # Create discrete Ackley function
-
-    # Create domain instance
-    minIdx = np.unravel_index(np.argmin(C), C.shape)
-    AckleyDomain = DomainInfo([xMin, yMin], [xMax, yMax],
-                              [(xMax - xMin) / (xPoints - 1), (yMax - yMin) / (yPoints - 1)], [xPoints, yPoints], 3600,
-                              900, 4, [X[minIdx], Y[minIdx]])
-
-    # Initialize and run PSO Algorithm
-    AckleyPSO = PSO(C, AckleyDomain, numberParticles=25)
-    AckleyPSO.run()
-
-    # Plot "built-in" plots
-    AckleyPSO.plotPath(X, Y)
-    AckleyPSO.plotConvergence()
-
-    # Animated plot
-    fig, ax = plt.subplots()
-    ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
-    ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
-    dots, = ax.plot(*getCurrentPoints(AckleyPSO, 0).T, 'r.')     # *.T is a weird python way to unpack two column array
-    stopPoint = np.argmin(AckleyPSO.bestFitnessHistory) + 15
-
-    def animate(i):
-        dots.set_data(*getCurrentPoints(AckleyPSO, i).T)
-        return dots,
-
-    anim = FuncAnimation(fig, animate, interval=150, frames=stopPoint, blit=True)
-    anim.save('Ackley.mp4', extra_args=['-vcodec', 'libx264'])
-    # anim.save('Ackley.gif', writer='imagemagick')
-
-    plt.show()
-
-    print("Done")
