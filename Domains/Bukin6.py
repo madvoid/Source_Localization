@@ -57,6 +57,7 @@ if __name__ == "__main__":
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
     ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
+    ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     ax.plot(Bukin6PSO.bestPositionHistory[:, 0], Bukin6PSO.bestPositionHistory[:, 1], color='r', linestyle=':', marker='.')
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath+'Best_Path.pdf')
@@ -73,6 +74,7 @@ if __name__ == "__main__":
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
     ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
+    ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     dots, = ax.plot(*Bukin6PSO.getCurrentPoints(0).T, 'r.')
     stopPoint = np.argmin(Bukin6PSO.bestFitnessHistory) + 15
 

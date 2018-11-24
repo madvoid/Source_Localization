@@ -35,8 +35,8 @@ if __name__ == "__main__":
     xMax = 512
     yMin = -512
     yMax = 512
-    xPoints = 100
-    yPoints = 100
+    xPoints = 130
+    yPoints = 130
     x = np.linspace(xMin, xMax, num=xPoints)
     y = np.linspace(yMin, yMax, num=yPoints)
     (X, Y) = np.meshgrid(x, y, indexing='xy')  # Create meshgrid
@@ -49,7 +49,8 @@ if __name__ == "__main__":
                               900, 4, [X[minIdx], Y[minIdx]])
 
     # Initialize and run PSO Algorithm
-    EggholderPSO = PSO(C, EggholderDomain, numberParticles=50)
+    maxIter = 5000
+    EggholderPSO = PSO(C, EggholderDomain, numberParticles=50, maximumIterations=maxIter)
     EggholderPSO.run()
 
     # Plot "built-in" plots
@@ -59,6 +60,7 @@ if __name__ == "__main__":
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
     ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
+    ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     ax.plot(EggholderPSO.bestPositionHistory[:, 0], EggholderPSO.bestPositionHistory[:, 1], color='r', linestyle=':', marker='.')
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath+'Best_Path.pdf')
@@ -75,6 +77,7 @@ if __name__ == "__main__":
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
     ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
+    ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     dots, = ax.plot(*EggholderPSO.getCurrentPoints(0).T, 'r.')
     stopPoint = np.argmin(EggholderPSO.bestFitnessHistory) + 15
 
@@ -82,7 +85,7 @@ if __name__ == "__main__":
         dots.set_data(*EggholderPSO.getCurrentPoints(i).T)
         return dots,
 
-    anim = FuncAnimation(fig, animate, interval=150, frames=stopPoint, blit=True)
+    anim = FuncAnimation(fig, animate, interval=150, frames=maxIter//5, blit=True)
     anim.save(basePath+'.mp4', extra_args=['-vcodec', 'libx264'])
     # anim.save('Eggholder.gif', writer='imagemagick')
 

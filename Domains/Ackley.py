@@ -48,7 +48,7 @@ if __name__ == "__main__":
                               900, 4, [X[minIdx], Y[minIdx]])
 
     # Initialize and run PSO Algorithm
-    AckleyPSO = PSO(C, AckleyDomain, numberParticles=25)
+    AckleyPSO = PSO(C, AckleyDomain, numberParticles=10)
     AckleyPSO.run()
 
     # Plot "built-in" plots
@@ -59,6 +59,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
     ax.plot(AckleyPSO.bestPositionHistory[:, 0], AckleyPSO.bestPositionHistory[:, 1], color='r', linestyle=':', marker='.')
+    ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath+'Best_Path.pdf')
 
@@ -74,6 +75,7 @@ if __name__ == "__main__":
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
     ax.pcolormesh(X, Y, C, cmap='viridis', edgecolor='none')
+    ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     dots, = ax.plot(*AckleyPSO.getCurrentPoints(0).T, 'r.')
     stopPoint = np.argmin(AckleyPSO.bestFitnessHistory) + 15
 

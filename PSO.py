@@ -42,12 +42,6 @@ class DomainInfo:
         return f'Domain from {self.minLims} to {self.maxLims} with {self.ds} spacing'
 
 
-
-
-
-
-
-
 class Particle:
     def __init__(self, domainClass, costArray, maximumIterations):
         """
@@ -100,19 +94,14 @@ class Particle:
         self.positionHistory[currentIteration, :] = self.position
 
 
-
-
-
-
-
-
 class PSO:
     def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000):
         self.costArray = costArray  # Array of values of cost function
         self.domain = domainClass  # DomainInfo instance about current domain
         self.maxIter = maximumIterations  # Maximum number of iterations
         self.numParticles = numberParticles  # Number of particles
-        self.particles = [Particle(domainClass, costArray, self.maxIter) for _ in range(self.numParticles)]  # Initialize particles
+        self.particles = [Particle(domainClass, costArray, self.maxIter) for _ in
+                          range(self.numParticles)]  # Initialize particles
         self.globalBest = self.particles[0]  # Just set best particle to first one for now
         self.globalBestIndex = 0
         self.getGlobalBest()  # Find best particle
@@ -143,7 +132,7 @@ class PSO:
         # Establish Constants
         c1 = 2
         c2 = 2
-        k = 0.05    # Velocity clamping constant
+        k = 0.05  # Velocity clamping constant
         vMax = k * (self.domain.maxLims - self.domain.minLims) / 2
         vMin = -1 * vMax
 
@@ -224,7 +213,51 @@ class PSO:
         :param iteration: Iteration of PSO where position for all particles is desired
         :return: Array of positions of all particles at given iteration
         """
-        return np.array([p.positionHistory[iteration,:] for p in self.particles])
+        return np.array([p.positionHistory[iteration, :] for p in self.particles])
 
 
+def rebin(ndarray, dVal, operation='mean'):
+    """
+    Bins an ndarray in all axes based on the target shape, by summing or averaging. Number of output dimensions
+    must match number of input dimensions and new dimensions must evenly dimensions must evenly divide into
+    the old ones. To be used to improve visualizations of PSO
 
+    Slightly modified from https://stackoverflow.com/a/29042041 by @Nipun
+    Simple walkthrough found at https://scipython.com/blog/binning-a-2d-array-in-numpy/
+
+    :param ndarray: Array to be downsampled
+    :param dVal: Downscale factor for new array, dVal should be an even factor of every dimension of original array
+    :param operation: Downsample using mean or sum
+    :return: New array
+    """
+
+    new_shape = tuple([i // dVal for i in ndarray.shape])
+
+    # Check inputs
+    operation = operation.lower()
+    if not operation in ['sum', 'mean']:
+        raise ValueError("Operation not supported.")
+    if ndarray.ndim != len(new_shape):
+        raise ValueError("Shape mismatch: {} -> {}".format(ndarray.shape,
+                                                           new_shape))
+
+    # Reshape into ndim + 1 array and operate along new dimension
+    compression_pairs = [(d, c // d) for d, c in zip(new_shape,
+                                                     ndarray.shape)]
+    flattened = [l for p in compression_pairs for l in p]
+    ndarray = ndarray.reshape(flattened)
+    for i in range(len(new_shape)):
+        op = getattr(ndarray, operation)
+        ndarray = op(-1 * (i + 1))
+    return ndarray
+
+
+def reslice3D(X, dVal):
+    """
+    Reslice a meshgrid output array to match the output of the rebin() function, only to be used with 3D arrays
+
+    :param X: Meshgrid output
+    :param dVal: Factor to reduce by. Should be same factor as used in rebin
+    :return:
+    """
+    return X[::dVal, ::dVal, ::dVal]
