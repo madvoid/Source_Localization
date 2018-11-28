@@ -43,15 +43,22 @@ class DomainInfo:
 
 
 class Particle:
-    def __init__(self, domainClass, costArray, maximumIterations):
+    def __init__(self, domainClass, costArray, maximumIterations, maskArray=None):
         """
         Initialize particle for PSO
 
         :param domainClass: DomainInfo instance about current domain
+        :param costArray: Cost array to be minimized
+        :param maximumIterations: Maximum number of iterations. Used to initialize history arrays
+        :param maskArray: Boolean array that is true where there is a building and false where there isn't
         """
         self.domain = domainClass  # Current domain
         self.position = np.random.uniform(self.domain.minLims, self.domain.maxLims)  # Initial position, 1xnDim array
-        # self.positionIndex = self.getIndex()  # Index of initial position,
+        if maskArray is not None:
+            index = self.getIndex()
+            while maskArray[index]:
+                self.position = np.random.uniform(self.domain.minLims, self.domain.maxLims)
+                index = self.getIndex()
         self.velocity = np.random.random_sample(
             self.domain.dimension) * 0.1  # Initial velocity, multiply by 0.1 so no explode, same size as position
         self.currentFitness = self.updateFitness(costArray)  # Current fitness of particle
@@ -61,6 +68,9 @@ class Particle:
         self.positionHistory = np.zeros([maximumIterations, self.domain.dimension])
         self.fitnessHistory[0] = self.currentFitness
         self.positionHistory[0, :] = self.position
+
+    def __repr__(self):
+        return f'Particle at position {self.position} and velocity {self.velocity}'
 
     def getIndex(self):
         """
@@ -95,12 +105,22 @@ class Particle:
 
 
 class PSO:
-    def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000):
+    def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000, maskArray=None):
+        """
+        Initialize PSO class
+
+        :param costArray: Array to minimize
+        :param domainClass: Information about the domain
+        :param numberParticles: Number of particles to run PSO with
+        :param maximumIterations: Maximum iterations for PSO
+        :param maskArray: Boolean array that is true where there is a building and false where there isn't
+        """
         self.costArray = costArray  # Array of values of cost function
+        self.maskArray = maskArray
         self.domain = domainClass  # DomainInfo instance about current domain
         self.maxIter = maximumIterations  # Maximum number of iterations
         self.numParticles = numberParticles  # Number of particles
-        self.particles = [Particle(domainClass, costArray, self.maxIter) for _ in
+        self.particles = [Particle(domainClass, costArray, self.maxIter, maskArray=maskArray) for _ in
                           range(self.numParticles)]  # Initialize particles
         self.globalBest = self.particles[0]  # Just set best particle to first one for now
         self.globalBestIndex = 0
@@ -109,6 +129,9 @@ class PSO:
         self.bestFitnessHistory = np.zeros(self.maxIter)  # Keep track of best fitness so far
         self.bestPositionHistory[0, :] = self.globalBest.position
         self.bestFitnessHistory[0] = self.globalBest.currentFitness
+
+    def __repr__(self):
+        return f'PSO instance with {self.numParticles} particles'
 
     def getGlobalBest(self):
         """
@@ -132,7 +155,12 @@ class PSO:
         # Establish Constants
         c1 = 2
         c2 = 2
-        k = 0.05  # Velocity clamping constant
+
+        # Inertial weight decay
+        omega = 0.05
+
+        # Velocity clamping
+        k = 0.05  # Velocity clamping constant, this makes a big difference!!!
         vMax = k * (self.domain.maxLims - self.domain.minLims) / 2
         vMin = -1 * vMax
 
@@ -141,9 +169,21 @@ class PSO:
         R2 = np.random.rand(self.domain.dimension)
         newVel = particle.velocity + c1 * (particle.pBestPosition - particle.position) * R1 + c2 * (
                 self.globalBest.position - particle.position) * R2
-        newVel[newVel > vMax] = vMax[newVel > vMax]
-        newVel[newVel < vMin] = vMin[newVel < vMin]
+        newVel = newVel * k
+        # newVel[newVel > vMax] = vMax[newVel > vMax]
+        # newVel[newVel < vMin] = vMin[newVel < vMin]
         return newVel
+
+    def getIndex(self, position):
+        """
+        Get matrix index of a given point in the domain. Duplicate of function in particle class
+
+        :return: The index of current position. 1xnDim tuple (is a tuple for accessing elements) This is to be used with the meshgrid matrices, not the 1-dim matrices!
+        """
+        indexRaw = ((position - self.domain.minLims) / self.domain.ds).astype(int)
+        indexRaw[0], indexRaw[1] = indexRaw[1], indexRaw[
+            0]  # Switch first and second spots since x,y need to be flipped when accessing 2D array since x corresponds to columns and y corresponds to rows
+        return tuple(indexRaw)
 
     def checkPosition(self, position):
         """
@@ -154,11 +194,33 @@ class PSO:
         """
         inLims = all(position > self.domain.minLims) and all(
             position < self.domain.maxLims)  # Will be true if within boundary
-        if not inLims:
+        if not inLims:      # Check to see if in domain
             return False
+        if self.maskArray is not None:
+            if self.maskArray[self.getIndex(position)]:     # Check to see if in building
+                return False
+        return True
+
+    def rotateVector(self, velocity):
+        """
+        Rotate vector in case it runs into building
+        2d vectors are randomly rotated either +90 degrees or -90 degrees
+        3d vectors are randomly rotated +/-90 degrees in xy plane and 180 degrees in z direction
+
+        :param velocity: Velocity that needs to be rotated
+        :return: Rotated velocity
+        """
+        if self.domain.dimension == 2:
+            sign = 1 if np.random.rand() < 0.5 else -1
+            return np.matmul(sign * np.array([[0, -1], [1, 0]]), velocity)
+        elif self.domain.dimension == 3:
+            sign = 1 if np.random.rand() < 0.5 else -1
+            rot = np.array([[0,-1,0],[1,0,0],[0,0,-1]])
+            rot[1,0] = rot[1,0]*sign
+            rot[0,1] = rot[0,1]*sign
+            return np.matmul(rot, velocity)
         else:
-            return True
-        # TODO: Add nogo zones, set of nogo indices
+            raise ValueError('Domain is not 2 or 3 dimensions!')
 
     def run(self):
         """
@@ -169,11 +231,14 @@ class PSO:
         for i in range(1, self.maxIter):
             for particle in self.particles:
                 # Generate new velocity
-                while True:
-                    newVel = self.generateVelocity(particle)
-                    newPos = particle.position + newVel
-                    if self.checkPosition(newPos):
-                        break
+                newVel = self.generateVelocity(particle)
+                newPos = particle.position + newVel
+                if not self.checkPosition(newPos):
+                    while True:
+                        newVel = self.rotateVector(newVel)
+                        newPos = particle.position + newVel
+                        if self.checkPosition(newPos):
+                            break
 
                 # Update velocity, position, fitness
                 particle.velocity = newVel

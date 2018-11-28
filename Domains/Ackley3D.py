@@ -1,9 +1,9 @@
 # -------------------------------------------------------------------------------------------------
-# Name: Ackley.py
+# Name: Ackley3D.py
 #
 # Author: Nipun Gunawardena
 #
-# Purpose: Test PSO "library" on Ackley function
+# Purpose: Test PSO "library" on 3D Ackley function
 # -------------------------------------------------------------------------------------------------
 
 import sys

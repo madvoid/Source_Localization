@@ -33,6 +33,7 @@ PSO has several different parameters and hyperparameters that can be modified, a
 * Adaptive weights, every time an unreachable position comes up weights change to move away from that position
 * Have continuous position but convert to discrete index to check if in no-go zone
 * Add mean wind vector or mean concentration gradient as vector to PSO update 
+* Add "exploding factor" when mean wind changes to really explore area
 
 ## TODO
 

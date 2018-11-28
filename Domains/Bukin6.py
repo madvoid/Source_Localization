@@ -4,6 +4,8 @@
 # Author: Nipun Gunawardena
 #
 # Purpose: Test PSO "library" on Bukin6 function
+#
+# Notes: f(x*) = 0, x* = (-10,1)
 # -------------------------------------------------------------------------------------------------
 
 import sys
@@ -82,7 +84,7 @@ if __name__ == "__main__":
         dots.set_data(*Bukin6PSO.getCurrentPoints(i).T)
         return dots,
 
-    anim = FuncAnimation(fig, animate, interval=150, frames=stopPoint, blit=True)
+    anim = FuncAnimation(fig, animate, interval=250, frames=stopPoint, blit=True)
     anim.save(basePath+'.mp4', extra_args=['-vcodec', 'libx264'])
     # anim.save('Bukin6.gif', writer='imagemagick')
 
