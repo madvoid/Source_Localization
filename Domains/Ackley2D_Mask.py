@@ -14,18 +14,13 @@ sys.path.insert(0, '../')
 from PSO import *
 
 
-
-
 @np.vectorize
 def ackley(x1, x2):
     return -20 * np.exp(-0.2 * np.sqrt(0.5 * (x1 ** 2 + x2 ** 2))) - np.exp(
         0.5 * (np.cos(2 * np.pi * x1) + np.cos(2 * np.pi * x2))) + 20 + np.exp(1)
 
 
-
-
 if __name__ == "__main__":
-
     # Create save path
     basePath = '../Results/AckleyMask/AckleyMask_'
 
@@ -43,7 +38,7 @@ if __name__ == "__main__":
 
     # Create "building"
     B = np.full(C.shape, False)
-    B[70:75,36:72] = True
+    B[70:75, 36:72] = True
     C_Block = np.copy(C)
     C_Block[B == True] = np.nan
 
@@ -68,15 +63,16 @@ if __name__ == "__main__":
 
     # Plot "built-in" plots
     fig = AckleyPSO.plotConvergence()
-    fig.savefig(basePath+'Convergence.pdf')
+    fig.savefig(basePath + 'Convergence.pdf')
 
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
     ax.pcolormesh(X, Y, C_Block, cmap='viridis', edgecolor='none')
-    ax.plot(AckleyPSO.bestPositionHistory[:, 0], AckleyPSO.bestPositionHistory[:, 1], color='r', linestyle=':', marker='.')
+    ax.plot(AckleyPSO.bestPositionHistory[:, 0], AckleyPSO.bestPositionHistory[:, 1], color='r', linestyle=':',
+            marker='.')
     ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     ax.set_title('Best Location Convergence')
-    fig.savefig(basePath+'Best_Path.pdf')
+    fig.savefig(basePath + 'Best_Path.pdf')
 
     # Animated plot
     fig, ax = plt.subplots()
@@ -87,12 +83,14 @@ if __name__ == "__main__":
     dots, = ax.plot(*AckleyPSO.getCurrentPoints(0).T, 'r.')
     stopPoint = np.argmin(AckleyPSO.bestFitnessHistory) + 15
 
+
     def animate(i):
         dots.set_data(*AckleyPSO.getCurrentPoints(i).T)
         return dots,
 
+
     anim = FuncAnimation(fig, animate, interval=150, frames=stopPoint, blit=True)
-    anim.save(basePath+'.mp4', extra_args=['-vcodec', 'libx264'])
+    anim.save(basePath + '.mp4', extra_args=['-vcodec', 'libx264'])
     # anim.save('Ackley.gif', writer='imagemagick')
 
     # Finish up

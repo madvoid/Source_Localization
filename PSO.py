@@ -194,14 +194,14 @@ class PSO:
         """
         inLims = all(position > self.domain.minLims) and all(
             position < self.domain.maxLims)  # Will be true if within boundary
-        if not inLims:      # Check to see if in domain
+        if not inLims:  # Check to see if in domain
             return False
         if self.maskArray is not None:
-            if self.maskArray[self.getIndex(position)]:     # Check to see if in building
+            if self.maskArray[self.getIndex(position)]:  # Check to see if in building
                 return False
         return True
 
-    def rotateVector(self, velocity):
+    def rotateVectorRandom(self, velocity):
         """
         Rotate vector in case it runs into building
         2d vectors are randomly rotated either +90 degrees or -90 degrees
@@ -215,9 +215,26 @@ class PSO:
             return np.matmul(sign * np.array([[0, -1], [1, 0]]), velocity)
         elif self.domain.dimension == 3:
             sign = 1 if np.random.rand() < 0.5 else -1
-            rot = np.array([[0,-1,0],[1,0,0],[0,0,-1]])
-            rot[1,0] = rot[1,0]*sign
-            rot[0,1] = rot[0,1]*sign
+            rot = np.array([[0, -1, 0], [1, 0, 0], [0, 0, -1]])
+            rot[1, 0] = rot[1, 0] * sign
+            rot[0, 1] = rot[0, 1] * sign
+            return np.matmul(rot, velocity)
+        else:
+            raise ValueError('Domain is not 2 or 3 dimensions!')
+
+    def rotateVector(self, velocity):
+        """
+        Rotate vector clockwise in case it runs into building
+        2d vectors are rotated +90 degrees
+        3d vectors are rotated +90 degrees in xy plane and 180 degrees in z direction
+
+        :param velocity: Velocity that needs to be rotated
+        :return: Rotated velocity
+        """
+        if self.domain.dimension == 2:
+            return np.matmul(np.array([[0, -1], [1, 0]]), velocity)
+        elif self.domain.dimension == 3:
+            rot = np.array([[0, -1, 0], [1, 0, 0], [0, 0, -1]])
             return np.matmul(rot, velocity)
         else:
             raise ValueError('Domain is not 2 or 3 dimensions!')
@@ -228,6 +245,12 @@ class PSO:
 
         :return: None
         """
+        # Set altVector to function used to produce alternate velocity vector if original is not allowed
+        # All functions should have same inputs, for now functions are a part of this class
+        # May change in future
+        altVector = self.rotateVector
+
+        # Start iterations
         for i in range(1, self.maxIter):
             for particle in self.particles:
                 # Generate new velocity
@@ -235,7 +258,7 @@ class PSO:
                 newPos = particle.position + newVel
                 if not self.checkPosition(newPos):
                     while True:
-                        newVel = self.rotateVector(newVel)
+                        newVel = altVector(newVel)
                         newPos = particle.position + newVel
                         if self.checkPosition(newPos):
                             break
