@@ -307,7 +307,7 @@ class PSO:
 def rebin(ndarray, dVal, operation='mean'):
     """
     Bins an ndarray in all axes based on the target shape, by summing or averaging. Number of output dimensions
-    must match number of input dimensions and new dimensions must evenly dimensions must evenly divide into
+    must match number of input dimensions and new dimensions must evenly divide into
     the old ones. To be used to improve visualizations of PSO
 
     Slightly modified from https://stackoverflow.com/a/29042041 by @Nipun

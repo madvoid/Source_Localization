@@ -39,8 +39,8 @@ if __name__ == "__main__":
     # Create "building"
     B = np.full(C.shape, False)
     B[70:75, 36:72] = True
-    C_Block = np.copy(C)
-    C_Block[B == True] = np.nan
+    C_Plot = np.copy(C)
+    C_Plot[B == True] = np.nan
 
     # Create domain instance
     minIdx = np.unravel_index(np.argmin(C), C.shape)
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # Plot 2D representation of masked array with particles to see if they are in building
     fig, ax = plt.subplots()
-    ax.pcolormesh(X, Y, C_Block, cmap='viridis', edgecolor='none')
+    ax.pcolormesh(X, Y, C_Plot, cmap='viridis', edgecolor='none')
     ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     ax.plot(*AckleyPSO.getCurrentPoints(0).T, 'r.')
     ax.set_title('2D Preview')
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
-    ax.pcolormesh(X, Y, C_Block, cmap='viridis', edgecolor='none')
+    ax.pcolormesh(X, Y, C_Plot, cmap='viridis', edgecolor='none')
     ax.plot(AckleyPSO.bestPositionHistory[:, 0], AckleyPSO.bestPositionHistory[:, 1], color='r', linestyle=':',
             marker='.')
     ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
-    ax.pcolormesh(X, Y, C_Block, cmap='viridis', edgecolor='none')
+    ax.pcolormesh(X, Y, C_Plot, cmap='viridis', edgecolor='none')
     ax.scatter(X[minIdx], Y[minIdx], c='k', marker='*', s=50)  # Actual best position
     dots, = ax.plot(*AckleyPSO.getCurrentPoints(0).T, 'r.')
     stopPoint = np.argmin(AckleyPSO.bestFitnessHistory) + 15

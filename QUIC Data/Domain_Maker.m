@@ -10,7 +10,7 @@ clear all, clc, close all
 
 
 %% Read Building Data
-folderPath = './Data/Simple1/';
+folderPath = './Simple3/';
 
 
 %% Read domain parameters
@@ -56,7 +56,7 @@ domain = domain(:,:,2:end);
 
 
 %% Create Plotting Coordinates
-[Y, X, Z] = ndgrid(1:size(domain,1), 1:size(domain,2), 1:size(domain,3)); 
+[X, Y, Z] = ndgrid(1:size(domain,1), 1:size(domain,2), 1:size(domain,3)); 
 X = X*dx;
 Y = Y*dy;
 Z = Z*dz;
@@ -103,7 +103,7 @@ colormap hot
 plot3(X(dIdx), Y(dIdx), Z(dIdx), 'g.', 'MarkerSize', 75);
 scatter3(X(lowCIdx), Y(lowCIdx), Z(lowCIdx), pointsize, plotC(lowCIdx), 'filled', 'MarkerFaceAlpha',lowCAlpha, 'MarkerEdgeAlpha',lowCAlpha);
 scatter3(X(hiCIdx), Y(hiCIdx), Z(hiCIdx), pointsize, plotC(hiCIdx), 'filled', 'MarkerFaceAlpha',hiCAlpha, 'MarkerEdgeAlpha',hiCAlpha);
-scatter3(sourceLoc(1), sourceLoc(2), sourceLoc(3), 300, 'filled', 'bp');
+scatter3(sourceLoc(2), sourceLoc(1), sourceLoc(3), 300, 'filled', 'bp');
 axis equal
 xlim([min(X(:)) max(X(:))]);
 ylim([min(Y(:)) max(Y(:))]);
