@@ -22,7 +22,7 @@ if __name__ == "__main__":
     Simple1Domain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/Simple1/Data.mat')
 
     # Initialize and run PSO Algorithm
-    Simple1PSO = PSO(C, Simple1Domain, numberParticles=25, maskArray=B)
+    Simple1PSO = PSO(C, Simple1Domain, numberParticles=50, maskArray=B)
     Simple1PSO.run()
 
     # Plot "built-in" plots

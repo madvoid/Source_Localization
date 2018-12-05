@@ -29,7 +29,8 @@ class DomainInfo:
         self.minLims = np.array(lowerLimitArr)  # (xMin, yMin, zMin)
         self.maxLims = np.array(upperLimitArr)  # (xMax, yMax, zMax)
         self.ds = np.array(spacingArr)  # (dx, dy, dz)
-        self.cellCounts = np.array(cellCountArr)  # (xCells, yCells, zCells) ! Need to be careful with this one
+        self.cellCounts = np.array(cellCountArr)  # (xCells, yCells, zCells) !! Need to be careful with this one !!
+        self.cellCounts[0], self.cellCounts[1] = self.cellCounts[1], self.cellCounts[0] # Change from (xCells, yCells, zCells) to (yCells, xCells, zCells). Done in separate line to maintain backwards compatibility
         self.duration = duration  # Seconds
         self.avgTime = averageTime  # Seconds
         self.numPeriods = numPeriods
@@ -103,6 +104,19 @@ class Particle:
         self.fitnessHistory[currentIteration] = self.currentFitness
         self.positionHistory[currentIteration, :] = self.position
 
+    def updateVelAndPos(self, newVelocity, newPosition, costArray):
+        """
+        Update velocity and position with new velocity and position
+
+        :param newVelocity: New velocity value
+        :param newPosition: New position value
+        :param costArray: Cost array for new fitness value
+        :return: None
+        """
+        self.velocity = newVelocity
+        self.position = newPosition
+        self.updateFitness(costArray)
+
 
 class PSO:
     def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000, maskArray=None):
@@ -161,7 +175,7 @@ class PSO:
 
         # Velocity clamping
         k = 0.05  # Velocity clamping constant, this makes a big difference!!!
-        vMax = k * (self.domain.maxLims - self.domain.minLims) / 2
+        vMax = 0.025 * (self.domain.maxLims - self.domain.minLims) / 2
         vMin = -1 * vMax
 
         # Create new velocity and clamp it
@@ -184,6 +198,18 @@ class PSO:
         indexRaw[0], indexRaw[1] = indexRaw[1], indexRaw[
             0]  # Switch first and second spots since x,y need to be flipped when accessing 2D array since x corresponds to columns and y corresponds to rows
         return tuple(indexRaw)
+
+    def getPosition(self, index):
+        """
+        Get position on grid given a matrix row and column
+
+        :param index: Matrix row and column as tuple (r,c) or (r, c, s)
+        :return: Position as ndarray [x, y] or [x, y, z]
+        """
+        index = np.array(index)     # Convert to array so can update
+        index[0], index[1] = index[1], index[0] # Switch row and column so in order x, y instead of y, x
+        pos = index * self.domain.ds + self.domain.minLims  # Convert to position, inverse of getIndex() math
+        return pos
 
     def checkPosition(self, position):
         """
@@ -239,6 +265,48 @@ class PSO:
         else:
             raise ValueError('Domain is not 2 or 3 dimensions!')
 
+    def checkNeighborhood(self, particle):
+        """
+        Check immediate neighborhood gridpoints of a given particle position
+
+        :param particle: Particle to check neighbors of
+        :return: Better position to move to from neighbors, if it exists
+        """
+        pVal = particle.currentFitness  # Present value
+        if self.domain.dimension == 2:  # Check dimension
+            (rIdx, cIdx) = particle.getIndex()  # Get index of current position
+            rBest, cBest = rIdx, cIdx
+            if all(np.array([rIdx, cIdx]) > np.array([0,0])) and all(np.array([rIdx, cIdx]) < (self.domain.cellCounts - 1)):  # If not edge, check neighbors. Otherwise return same position
+                for r in range(rIdx - 1, rIdx + 2):     # Iterate through rows
+                    for c in range(cIdx - 1, cIdx + 2): # Iterate through cols
+                        if self.costArray[r,c] < pVal:  # If neighbor has smaller value than current
+                            if self.checkPosition(self.getPosition((r,c))):     # If neighbor is allowed, update best neighbor
+                                pVal = self.costArray[r,c]
+                                rBest, cBest = r, c
+                            else:
+                                continue    # If neighbor not allowed, go to next
+                return self.getPosition((rBest, cBest))
+            else:
+                return particle.position
+        elif self.domain.dimension == 3:    # See 2D part for comments
+            (rIdx, cIdx, sIdx) = particle.getIndex()
+            rBest, cBest, sBest = rIdx, cIdx, sIdx
+            if all(np.array([rIdx, cIdx, sIdx]) > np.array([0,0,0])) and all(np.array([rIdx, cIdx, sIdx]) < (self.domain.cellCounts - 1)):
+                for r in range(rIdx - 1, rIdx + 2):
+                    for c in range(cIdx - 1, cIdx + 2):
+                        for s in range(sIdx - 1, sIdx + 2):
+                            if self.costArray[r,c,s] < pVal:
+                                if self.checkPosition(self.getPosition((r,c,s))):
+                                    pVal = self.costArray[r,c,s]
+                                    rBest, cBest, sBest = r, c, s
+                                else:
+                                    continue
+                return self.getPosition((rBest, cBest, sBest))
+            else:
+                return particle.position
+        else:
+            raise ValueError('Domain is not 2 or 3 dimensions!')
+
     def run(self):
         """
         Run the particle swarm algorithm. All parameters are set in __init__
@@ -264,9 +332,9 @@ class PSO:
                             break
 
                 # Update velocity, position, fitness
-                particle.velocity = newVel
-                particle.position = newPos
-                particle.updateFitness(self.costArray)
+                particle.updateVelAndPos(newVel, newPos, self.costArray)
+                newPos = self.checkNeighborhood(particle)
+                particle.updateVelAndPos(newVel, newPos, self.costArray)
                 particle.updateHistory(i)
                 if particle.currentFitness <= particle.pBestFitness:  # Minimizing, not maximizing!!
                     particle.pBestFitness = particle.currentFitness
@@ -281,6 +349,10 @@ class PSO:
             # Print
             print(
                 f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
+
+        # Finish up
+        print("Finished Iterations")
+        self.checkNeighborhood(self.globalBest)
 
     def plotConvergence(self):
         """
