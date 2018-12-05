@@ -30,7 +30,8 @@ class DomainInfo:
         self.maxLims = np.array(upperLimitArr)  # (xMax, yMax, zMax)
         self.ds = np.array(spacingArr)  # (dx, dy, dz)
         self.cellCounts = np.array(cellCountArr)  # (xCells, yCells, zCells) !! Need to be careful with this one !!
-        self.cellCounts[0], self.cellCounts[1] = self.cellCounts[1], self.cellCounts[0] # Change from (xCells, yCells, zCells) to (yCells, xCells, zCells). Done in separate line to maintain backwards compatibility
+        self.cellCounts[0], self.cellCounts[1] = self.cellCounts[1], self.cellCounts[
+            0]  # Change from (xCells, yCells, zCells) to (yCells, xCells, zCells). Done in separate line to maintain backwards compatibility
         self.duration = duration  # Seconds
         self.avgTime = averageTime  # Seconds
         self.numPeriods = numPeriods
@@ -206,8 +207,8 @@ class PSO:
         :param index: Matrix row and column as tuple (r,c) or (r, c, s)
         :return: Position as ndarray [x, y] or [x, y, z]
         """
-        index = np.array(index)     # Convert to array so can update
-        index[0], index[1] = index[1], index[0] # Switch row and column so in order x, y instead of y, x
+        index = np.array(index)  # Convert to array so can update
+        index[0], index[1] = index[1], index[0]  # Switch row and column so in order x, y instead of y, x
         pos = index * self.domain.ds + self.domain.minLims  # Convert to position, inverse of getIndex() math
         return pos
 
@@ -276,28 +277,31 @@ class PSO:
         if self.domain.dimension == 2:  # Check dimension
             (rIdx, cIdx) = particle.getIndex()  # Get index of current position
             rBest, cBest = rIdx, cIdx
-            if all(np.array([rIdx, cIdx]) > np.array([0,0])) and all(np.array([rIdx, cIdx]) < (self.domain.cellCounts - 1)):  # If not edge, check neighbors. Otherwise return same position
-                for r in range(rIdx - 1, rIdx + 2):     # Iterate through rows
-                    for c in range(cIdx - 1, cIdx + 2): # Iterate through cols
-                        if self.costArray[r,c] < pVal:  # If neighbor has smaller value than current
-                            if self.checkPosition(self.getPosition((r,c))):     # If neighbor is allowed, update best neighbor
-                                pVal = self.costArray[r,c]
+            if all(np.array([rIdx, cIdx]) > np.array([0, 0])) and all(np.array([rIdx, cIdx]) < (
+                    self.domain.cellCounts - 1)):  # If not edge, check neighbors. Otherwise return same position
+                for r in range(rIdx - 1, rIdx + 2):  # Iterate through rows
+                    for c in range(cIdx - 1, cIdx + 2):  # Iterate through cols
+                        if self.costArray[r, c] < pVal:  # If neighbor has smaller value than current
+                            if self.checkPosition(
+                                    self.getPosition((r, c))):  # If neighbor is allowed, update best neighbor
+                                pVal = self.costArray[r, c]
                                 rBest, cBest = r, c
                             else:
-                                continue    # If neighbor not allowed, go to next
+                                continue  # If neighbor not allowed, go to next
                 return self.getPosition((rBest, cBest))
             else:
                 return particle.position
-        elif self.domain.dimension == 3:    # See 2D part for comments
+        elif self.domain.dimension == 3:  # See 2D part for comments
             (rIdx, cIdx, sIdx) = particle.getIndex()
             rBest, cBest, sBest = rIdx, cIdx, sIdx
-            if all(np.array([rIdx, cIdx, sIdx]) > np.array([0,0,0])) and all(np.array([rIdx, cIdx, sIdx]) < (self.domain.cellCounts - 1)):
+            if all(np.array([rIdx, cIdx, sIdx]) > np.array([0, 0, 0])) and all(
+                    np.array([rIdx, cIdx, sIdx]) < (self.domain.cellCounts - 1)):
                 for r in range(rIdx - 1, rIdx + 2):
                     for c in range(cIdx - 1, cIdx + 2):
                         for s in range(sIdx - 1, sIdx + 2):
-                            if self.costArray[r,c,s] < pVal:
-                                if self.checkPosition(self.getPosition((r,c,s))):
-                                    pVal = self.costArray[r,c,s]
+                            if self.costArray[r, c, s] < pVal:
+                                if self.checkPosition(self.getPosition((r, c, s))):
+                                    pVal = self.costArray[r, c, s]
                                     rBest, cBest, sBest = r, c, s
                                 else:
                                     continue

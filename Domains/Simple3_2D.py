@@ -23,11 +23,14 @@ if __name__ == "__main__":
     C3D = np.copy(C)
 
     # Turn to 2D
-    X = X[:,:,0]
-    Y = Y[:,:,0]
+    X = X[:, :, 0]
+    Y = Y[:, :, 0]
     C = np.mean(C, 2)
     C_Plot = np.mean(C_Plot, 2)
-    Simple3Domain = DomainInfo(Simple3Domain.minLims[:2], Simple3Domain.maxLims[:2], Simple3Domain.ds[:2], [100, 80], Simple3Domain.duration, Simple3Domain.avgTime, Simple3Domain.numPeriods, Simple3Domain.sourceLoc[:2]) # Hard code cell count array just for this case to get around bug
+    Simple3Domain = DomainInfo(Simple3Domain.minLims[:2], Simple3Domain.maxLims[:2], Simple3Domain.ds[:2], [100, 80],
+                               Simple3Domain.duration, Simple3Domain.avgTime, Simple3Domain.numPeriods,
+                               Simple3Domain.sourceLoc[
+                               :2])  # Hard code cell count array just for this case to get around bug
 
     # Initialize and run PSO Algorithm
     Simple3PSO = PSO(C, Simple3Domain, numberParticles=25)
