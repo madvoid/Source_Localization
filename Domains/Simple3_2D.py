@@ -18,6 +18,9 @@ if __name__ == "__main__":
     # Create save path
     basePath = '../Results/Simple3_2D/Simple3_2D_'
 
+    # Set random seed for reproducibility
+    # np.random.seed(0)
+
     # Retrieve domain and data
     Simple3Domain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/Simple3/Data.mat')
     C3D = np.copy(C)
@@ -33,12 +36,15 @@ if __name__ == "__main__":
                                :2])  # Hard code cell count array just for this case to get around bug
 
     # Initialize and run PSO Algorithm
-    Simple3PSO = PSO(C, Simple3Domain, numberParticles=25)
-    Simple3PSO.run()
+    Simple3PSO = PSO(C, Simple3Domain, numberParticles=10, maximumIterations=300)
+    Simple3PSO.run(checkNeighborhood=True)
 
     # Plot "built-in" plots
     fig = Simple3PSO.plotConvergence()
     fig.savefig(basePath + 'Convergence.pdf')
+    fig = Simple3PSO.plotDistanceNorm()
+    fig.savefig(basePath + 'DistNorm.pdf')
+
 
     # Make plotting variables
     xMin = Simple3Domain.minLims[0]
@@ -48,12 +54,17 @@ if __name__ == "__main__":
     sLocX = Simple3Domain.sourceLoc[0]
     sLocY = Simple3Domain.sourceLoc[1]
 
+    # Create Colors
+    concentrationMap = 'inferno'
+    lineMap = 'g'
+    sourceMap = 'g'
+
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
-    ax.pcolormesh(X, Y, C_Plot, cmap='viridis', edgecolor='none')
-    ax.plot(Simple3PSO.bestPositionHistory[:, 0], Simple3PSO.bestPositionHistory[:, 1], color='r', linestyle=':',
+    ax.pcolormesh(X, Y, C_Plot, cmap=concentrationMap, edgecolor='none')
+    ax.plot(Simple3PSO.bestPositionHistory[:, 0], Simple3PSO.bestPositionHistory[:, 1], color=lineMap, linestyle=':',
             marker='.')
-    ax.scatter(sLocX, sLocY, c='k', marker='*', s=10)  # Actual best position
+    ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=10)  # Actual best position
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath + 'Best_Path.pdf')
 
@@ -61,14 +72,15 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
-    ax.pcolormesh(X, Y, C_Plot, cmap='viridis', edgecolor='none')
-    ax.scatter(sLocX, sLocY, c='k', marker='*', s=50)  # Actual best position
-    scat = ax.scatter(*Simple3PSO.getCurrentPoints(0)[:, 0:2].T, c='r', marker='.')
+    ax.pcolormesh(X, Y, C_Plot, cmap=concentrationMap, edgecolor='none')
+    ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
+    scat = ax.scatter(*Simple3PSO.getCurrentPoints(0)[:, 0:2].T, c='g', marker='.')
     stopPoint = np.argmin(Simple3PSO.bestFitnessHistory) + 50
 
 
     def animate(i):
         scat.set_offsets(Simple3PSO.getCurrentPoints(i)[:, 0:2])
+        ax.set_title(f'Live Convergence :: Iteration {i}')
         return scat,
 
 

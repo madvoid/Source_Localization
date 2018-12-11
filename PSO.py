@@ -4,11 +4,14 @@
 # Author: Nipun Gunawardena
 #
 # Purpose: PSO library for use with discrete grids
+#
+# Notes: May need to switch equalities to np.allclose()
 # -------------------------------------------------------------------------------------------------
 
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
+from scipy.spatial.distance import cdist
 
 
 class DomainInfo:
@@ -65,11 +68,12 @@ class Particle:
             self.domain.dimension) * 0.1  # Initial velocity, multiply by 0.1 so no explode, same size as position
         self.currentFitness = self.updateFitness(costArray)  # Current fitness of particle
         self.pBestPosition = self.position  # Best location of particle
-        self.pBestFitness = self.currentFitness
-        self.fitnessHistory = np.zeros(maximumIterations)
-        self.positionHistory = np.zeros([maximumIterations, self.domain.dimension])
+        self.pBestFitness = self.currentFitness  # Fitness of personal best position
+        self.fitnessHistory = np.zeros(maximumIterations)  # History of particle fitness
+        self.positionHistory = np.zeros([maximumIterations, self.domain.dimension])  # History of particle position
         self.fitnessHistory[0] = self.currentFitness
         self.positionHistory[0, :] = self.position
+        self.isStuck = False  # Keep track if it's stuck in personal best position
 
     def __repr__(self):
         return f'Particle at position {self.position} and velocity {self.velocity}'
@@ -144,6 +148,7 @@ class PSO:
         self.bestFitnessHistory = np.zeros(self.maxIter)  # Keep track of best fitness so far
         self.bestPositionHistory[0, :] = self.globalBest.position
         self.bestFitnessHistory[0] = self.globalBest.currentFitness
+        self.stuckCheckVal = 5      # Number of times particle should be in neighborhood before force leave
 
     def __repr__(self):
         return f'PSO instance with {self.numParticles} particles'
@@ -159,35 +164,6 @@ class PSO:
         if bestParticle.currentFitness < self.globalBest.currentFitness:
             self.globalBestIndex = bestParticleIndex
             self.globalBest = deepcopy(bestParticle)
-
-    def generateVelocity(self, particle):
-        """
-        Generate new velocity for particle class
-
-        :param particle: Instance of Particle class
-        :return: New velocity, ndarray of size 1xnDim. Particle is NOT updated in this function
-        """
-        # Establish Constants
-        c1 = 2
-        c2 = 2
-
-        # Inertial weight decay
-        omega = 0.05
-
-        # Velocity clamping
-        k = 0.05  # Velocity clamping constant, this makes a big difference!!!
-        vMax = 0.025 * (self.domain.maxLims - self.domain.minLims) / 2
-        vMin = -1 * vMax
-
-        # Create new velocity and clamp it
-        R1 = np.random.rand(self.domain.dimension)
-        R2 = np.random.rand(self.domain.dimension)
-        newVel = particle.velocity + c1 * (particle.pBestPosition - particle.position) * R1 + c2 * (
-                self.globalBest.position - particle.position) * R2
-        newVel = newVel * k
-        # newVel[newVel > vMax] = vMax[newVel > vMax]
-        # newVel[newVel < vMin] = vMin[newVel < vMin]
-        return newVel
 
     def getIndex(self, position):
         """
@@ -228,27 +204,6 @@ class PSO:
                 return False
         return True
 
-    def rotateVectorRandom(self, velocity):
-        """
-        Rotate vector in case it runs into building
-        2d vectors are randomly rotated either +90 degrees or -90 degrees
-        3d vectors are randomly rotated +/-90 degrees in xy plane and 180 degrees in z direction
-
-        :param velocity: Velocity that needs to be rotated
-        :return: Rotated velocity
-        """
-        if self.domain.dimension == 2:
-            sign = 1 if np.random.rand() < 0.5 else -1
-            return np.matmul(sign * np.array([[0, -1], [1, 0]]), velocity)
-        elif self.domain.dimension == 3:
-            sign = 1 if np.random.rand() < 0.5 else -1
-            rot = np.array([[0, -1, 0], [1, 0, 0], [0, 0, -1]])
-            rot[1, 0] = rot[1, 0] * sign
-            rot[0, 1] = rot[0, 1] * sign
-            return np.matmul(rot, velocity)
-        else:
-            raise ValueError('Domain is not 2 or 3 dimensions!')
-
     def rotateVector(self, velocity):
         """
         Rotate vector clockwise in case it runs into building
@@ -266,6 +221,16 @@ class PSO:
         else:
             raise ValueError('Domain is not 2 or 3 dimensions!')
 
+    def getDistanceNorm(self, iteration):
+        """
+        Calculate norm of matrix of distances between all particles. Can be slow
+
+        :param iteration: Iteration to check
+        :return:
+        """
+        a = self.getCurrentPoints(iteration)
+        return np.linalg.norm(cdist(a, a, metric='euclidean'), ord='fro')
+
     def checkNeighborhood(self, particle):
         """
         Check immediate neighborhood gridpoints of a given particle position
@@ -273,6 +238,8 @@ class PSO:
         :param particle: Particle to check neighbors of
         :return: Better position to move to from neighbors, if it exists
         """
+        oPosition = particle.position  # Save current position to return if search returns nothing
+        bFlag = False  # Flag to indicate whether better position was found or not
         pVal = particle.currentFitness  # Present value
         if self.domain.dimension == 2:  # Check dimension
             (rIdx, cIdx) = particle.getIndex()  # Get index of current position
@@ -284,11 +251,15 @@ class PSO:
                         if self.costArray[r, c] < pVal:  # If neighbor has smaller value than current
                             if self.checkPosition(
                                     self.getPosition((r, c))):  # If neighbor is allowed, update best neighbor
+                                bFlag = True
                                 pVal = self.costArray[r, c]
                                 rBest, cBest = r, c
                             else:
                                 continue  # If neighbor not allowed, go to next
-                return self.getPosition((rBest, cBest))
+                if bFlag:
+                    return self.getPosition((rBest, cBest))
+                else:
+                    return oPosition
             else:
                 return particle.position
         elif self.domain.dimension == 3:  # See 2D part for comments
@@ -301,17 +272,62 @@ class PSO:
                         for s in range(sIdx - 1, sIdx + 2):
                             if self.costArray[r, c, s] < pVal:
                                 if self.checkPosition(self.getPosition((r, c, s))):
+                                    bFlag = True
                                     pVal = self.costArray[r, c, s]
                                     rBest, cBest, sBest = r, c, s
                                 else:
                                     continue
-                return self.getPosition((rBest, cBest, sBest))
+                if bFlag:
+                    return self.getPosition((rBest, cBest, sBest))
+                else:
+                    return oPosition
             else:
                 return particle.position
         else:
             raise ValueError('Domain is not 2 or 3 dimensions!')
 
-    def run(self):
+    def generateVelocity(self, particle):
+        """
+        Generate new velocity for particle class
+
+        :param particle: Instance of Particle class
+        :return: New velocity, ndarray of size 1xnDim. Particle is NOT updated in this function
+        """
+        # Establish Constants
+        if particle.pBestFitness == 0.0:  # QUIC specific addition, don't weight empty spots heavily
+            c1 = 0.5
+            c2 = 3.5
+        else:
+            c1 = 2  # Local Best
+            c2 = 2  # Global Best
+
+        # Inertial weight decay
+        omega = 0.05
+
+        # Velocity clamping
+        k = 0.05  # Velocity clamping constant, this makes a big difference!!!
+        vMax = 0.05 * (self.domain.maxLims - self.domain.minLims)
+        vMin = -1 * vMax
+
+        # Create new velocity and clamp it
+        R1 = np.random.rand(self.domain.dimension)
+        R2 = np.random.rand(self.domain.dimension)
+        cogComp = c1 * (particle.pBestPosition - particle.position) * R1
+        socComp = c2 * (self.globalBest.position - particle.position) * R2
+        if (all(cogComp == 0) and all(socComp == 0)) or (
+        particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
+            particle.isStuck = False
+            # TODO: Also change best position to something random
+            newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
+        else:
+            newVel = particle.velocity + cogComp + socComp
+            newVel = newVel * k
+        # TODO: Play with this section to change behavior
+        # newVel[newVel > vMax] = vMax[newVel > vMax]
+        # newVel[newVel < vMin] = vMin[newVel < vMin]
+        return newVel
+
+    def run(self, checkNeighborhood=False):
         """
         Run the particle swarm algorithm. All parameters are set in __init__
 
@@ -322,9 +338,13 @@ class PSO:
         # May change in future
         altVector = self.rotateVector
 
+        self.distNorm = np.ones(self.maxIter)
+        self.distNorm[0] = self.getDistanceNorm(0)
+
         # Start iterations
         for i in range(1, self.maxIter):
-            for particle in self.particles:
+            for pIdx, particle in enumerate(self.particles):
+
                 # Generate new velocity
                 newVel = self.generateVelocity(particle)
                 newPos = particle.position + newVel
@@ -337,25 +357,33 @@ class PSO:
 
                 # Update velocity, position, fitness
                 particle.updateVelAndPos(newVel, newPos, self.costArray)
-                newPos = self.checkNeighborhood(particle)
-                particle.updateVelAndPos(newVel, newPos, self.costArray)
+                if checkNeighborhood:
+                    newPos = self.checkNeighborhood(particle)
+                    particle.updateVelAndPos(newVel, newPos, self.costArray)
                 particle.updateHistory(i)
                 if particle.currentFitness <= particle.pBestFitness:  # Minimizing, not maximizing!!
                     particle.pBestFitness = particle.currentFitness
                     particle.pBestPosition = particle.position.copy()
 
+                # Check to see if particle is within the dx, dy, dz for a given amount of times
+                stuckCheck = np.diff(particle.positionHistory[i - self.stuckCheckVal:i], axis=0)
+                if (stuckCheck < self.domain.ds).all():
+                    particle.isStuck = True
+
             # Update global best and history
-            print(" ")
             self.getGlobalBest()
             self.bestPositionHistory[i, :] = self.globalBest.position
             self.bestFitnessHistory[i] = self.globalBest.currentFitness
+
+            # Get idea of distance between particles
+            self.distNorm[i] = self.getDistanceNorm(i)
 
             # Print
             print(
                 f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
         # Finish up
-        print("Finished Iterations")
+        print("\nFinished Iterations")
         self.checkNeighborhood(self.globalBest)
 
     def plotConvergence(self):
@@ -370,12 +398,19 @@ class PSO:
         plt.show()
         return fig
 
+    def plotDistanceNorm(self):
+        fig, ax = plt.subplots()
+        ax.plot(self.distNorm)
+        ax.set_title('Distance Norm')
+        plt.show()
+        return fig
+
     def getCurrentPoints(self, iteration):
         """
         Return the position of all the particles at a given iteration. Useful for animating plots
 
         :param iteration: Iteration of PSO where position for all particles is desired
-        :return: Array of positions of all particles at given iteration
+        :return: Array of positions of all particles at given iteration, size nPoints x nDims
         """
         return np.array([p.positionHistory[iteration, :] for p in self.particles])
 

@@ -49,13 +49,15 @@ if __name__ == "__main__":
                               900, 4, [X[minIdx], Y[minIdx]])
 
     # Initialize and run PSO Algorithm
-    maxIter = 5000
+    maxIter = 1000
     EggholderPSO = PSO(C, EggholderDomain, numberParticles=50, maximumIterations=maxIter)
-    EggholderPSO.run()
+    EggholderPSO.run(checkNeighborhood=True)
 
     # Plot "built-in" plots
     fig = EggholderPSO.plotConvergence()
-    fig.savefig(basePath+'Convergence.pdf')
+    fig.savefig(basePath + 'Convergence.pdf')
+    fig = EggholderPSO.plotDistanceNorm()
+    fig.savefig(basePath + 'DistNorm.pdf')
 
     # Plot 2D representation of best points
     fig, ax = plt.subplots()

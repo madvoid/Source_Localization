@@ -23,11 +23,13 @@ if __name__ == "__main__":
 
     # Initialize and run PSO Algorithm
     Simple1PSO = PSO(C, Simple1Domain, numberParticles=50, maskArray=B)
-    Simple1PSO.run()
+    Simple1PSO.run(checkNeighborhood=True)
 
     # Plot "built-in" plots
     fig = Simple1PSO.plotConvergence()
     fig.savefig(basePath + 'Convergence.pdf')
+    fig = Simple1PSO.plotDistanceNorm()
+    fig.savefig(basePath + 'DistNorm.pdf')
 
     # Make plotting variables
     xMin = Simple1Domain.minLims[0]
@@ -40,31 +42,45 @@ if __name__ == "__main__":
     sLocY = Simple1Domain.sourceLoc[1]
     sLocZ = Simple1Domain.sourceLoc[2]
 
+    # Create 2d representation of 3d concentration
     C_Plot_2d = np.mean(C_Plot, 2)
+
+    # Create Colors
+    concentrationMap = 'inferno'
+    lineMap = 'g'
+    zMap = 'winter'
+    sourceMap = 'g'
 
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
-    ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap='viridis', edgecolor='none')
-    ax.plot(Simple1PSO.bestPositionHistory[:, 0], Simple1PSO.bestPositionHistory[:, 1], color='r', linestyle=':',
+    ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
+    ax.plot(Simple1PSO.bestPositionHistory[:, 0], Simple1PSO.bestPositionHistory[:, 1], color=lineMap, linestyle=':',
             marker='.')
-    ax.scatter(sLocX, sLocY, c='k', marker='*', s=10)  # Actual best position
+    ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=10)  # Actual best position
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath + 'Best_Path.pdf')
+    plt.show()
+
+    # Normalizing function for scatterplot colors
+    def normalize(arr):
+        return (arr - zMin) / (zMax - zMin)
 
     # Animated plot
     fig, ax = plt.subplots()
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
-    ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap='viridis', edgecolor='none')
-    ax.scatter(sLocX, sLocY, c='k', marker='*', s=50)  # Actual best position
-    scat = ax.scatter(*Simple1PSO.getCurrentPoints(0)[:, 0:2].T, c='r', marker='.',
-                      s=Simple1PSO.getCurrentPoints(0)[:, 2])
+    ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
+    ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
+    scat = ax.scatter(*Simple1PSO.getCurrentPoints(0)[:, 0:2].T, c=normalize(Simple1PSO.getCurrentPoints(0)[:, 2]), marker='.', cmap=zMap)
     stopPoint = np.argmin(Simple1PSO.bestFitnessHistory) + 25
+    plt.show()
 
+    scatCol = plt.get_cmap(zMap)
 
     def animate(i):
         scat.set_offsets(Simple1PSO.getCurrentPoints(i)[:, 0:2])
-        scat._sizes = Simple1PSO.getCurrentPoints(i)[:, 2]
+        # scat._sizes = Simple1PSO.getCurrentPoints(i)[:, 2]
+        scat.set_color(scatCol(normalize(Simple1PSO.getCurrentPoints(i)[:, 2])))
         return scat,
 
 
