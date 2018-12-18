@@ -24,9 +24,9 @@ def readQUICMat(filename):
     M = loadmat(filename, squeeze_me=True)
 
     # Unpack variables
-    if M['C'].ndim == 1:  # Don't know why this needs to be done, different .mat files are loaded differently
+    if M['C'].ndim == 1:  # Time varying case, set C to to first time step  TODO: Update to handle time varying case, save other time steps
         C = M['C'][0]
-    elif M['C'].ndim == 3:
+    elif M['C'].ndim == 3:  # Constant time case
         C = M['C']
     bldgData = M['domain']  # Building matrix (B)
     avgTime = M['avgTime']  # Averaging time for each period in total time

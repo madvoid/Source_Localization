@@ -81,6 +81,7 @@ if __name__ == "__main__":
         scat.set_offsets(Simple1PSO.getCurrentPoints(i)[:, 0:2])
         # scat._sizes = Simple1PSO.getCurrentPoints(i)[:, 2]
         scat.set_color(scatCol(normalize(Simple1PSO.getCurrentPoints(i)[:, 2])))
+        ax.set_title(f'Live Convergence :: Iteration {i}')
         return scat,
 
 

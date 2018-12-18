@@ -317,7 +317,6 @@ class PSO:
         if (all(cogComp == 0) and all(socComp == 0)) or (
         particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
             particle.isStuck = False
-            # TODO: Also change best position to something random
             newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
         else:
             newVel = particle.velocity + cogComp + socComp
@@ -327,7 +326,7 @@ class PSO:
         # newVel[newVel < vMin] = vMin[newVel < vMin]
         return newVel
 
-    def run(self, checkNeighborhood=False):
+    def run(self, checkNeighborhood=False, verbose=True):
         """
         Run the particle swarm algorithm. All parameters are set in __init__
 
@@ -379,12 +378,12 @@ class PSO:
             self.distNorm[i] = self.getDistanceNorm(i)
 
             # Print
-            print(
-                f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
+            if verbose:
+                print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
         # Finish up
-        print("\nFinished Iterations")
-        self.checkNeighborhood(self.globalBest)
+        if verbose:
+            print("\nFinished Iterations")
 
     def plotConvergence(self):
         """
