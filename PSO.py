@@ -134,12 +134,14 @@ class PSO:
         :param maximumIterations: Maximum iterations for PSO
         :param maskArray: Boolean array that is true where there is a building and false where there isn't
         """
-        self.costArray = costArray  # Array of values of cost function
+        self.costArray = costArray[0]  # Array of values of cost function for first time step
+        self.totalCostArray = costArray  # Cost function, all time steps
+        self.currentTimeStep = 0  # Current time step
         self.maskArray = maskArray
         self.domain = domainClass  # DomainInfo instance about current domain
         self.maxIter = maximumIterations  # Maximum number of iterations
         self.numParticles = numberParticles  # Number of particles
-        self.particles = [Particle(domainClass, costArray, self.maxIter, maskArray=maskArray) for _ in
+        self.particles = [Particle(domainClass, self.costArray, self.maxIter, maskArray=maskArray) for _ in
                           range(self.numParticles)]  # Initialize particles
         self.globalBest = self.particles[0]  # Just set best particle to first one for now
         self.globalBestIndex = 0
@@ -148,7 +150,7 @@ class PSO:
         self.bestFitnessHistory = np.zeros(self.maxIter)  # Keep track of best fitness so far
         self.bestPositionHistory[0, :] = self.globalBest.position
         self.bestFitnessHistory[0] = self.globalBest.currentFitness
-        self.stuckCheckVal = 5      # Number of times particle should be in neighborhood before force leave
+        self.stuckCheckVal = 5  # Number of times particle should be in neighborhood before force leave
 
     def __repr__(self):
         return f'PSO instance with {self.numParticles} particles'
@@ -315,7 +317,7 @@ class PSO:
         cogComp = c1 * (particle.pBestPosition - particle.position) * R1
         socComp = c2 * (self.globalBest.position - particle.position) * R2
         if (all(cogComp == 0) and all(socComp == 0)) or (
-        particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
+                particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
             particle.isStuck = False
             newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
         else:
@@ -379,7 +381,8 @@ class PSO:
 
             # Print
             if verbose:
-                print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
+                print(
+                    f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
         # Finish up
         if verbose:

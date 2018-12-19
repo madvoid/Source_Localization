@@ -9,8 +9,9 @@
 # -------------------------------------------------------------------------------------------------
 
 import numpy as np
-from scipy.io import loadmat
+from copy import deepcopy
 from PSO import DomainInfo
+from scipy.io import loadmat
 
 
 def readQUICMat(filename):
@@ -24,9 +25,10 @@ def readQUICMat(filename):
     M = loadmat(filename, squeeze_me=True)
 
     # Unpack variables
-    if M['C'].ndim == 1:  # Time varying case, set C to to first time step  TODO: Update to handle time varying case, save other time steps
-        C = M['C'][0]
-    elif M['C'].ndim == 3:  # Constant time case
+    if M['C'].ndim == 3:  # Non time varying case, wrap in array so looks like time varying case
+        C = np.empty(shape=(1,), dtype=object)
+        C[0] = M['C']
+    else:  # Time Varying case
         C = M['C']
     bldgData = M['domain']  # Building matrix (B)
     avgTime = M['avgTime']  # Averaging time for each period in total time
@@ -51,22 +53,26 @@ def readQUICMat(filename):
     (X, Y, Z) = np.meshgrid(x, y, z, indexing='xy')
 
     # Change concentrations so there is 0 instead of nan for cells with no particulate
-    C[np.isnan(C)] = 0
+    for i in C:
+        i[np.isnan(i)] = 0
 
     # Create building logical matrix
     B = np.logical_not(np.isnan(bldgData))
 
     # Create plotting concentration matrix
-    C_Plot = np.copy(C)
-    try:  # If this happens it probably means there are no buildings
-        C_Plot[B == True] = np.nan
-    except:
-        C_Plot = C
+    C_Plot = deepcopy(C)
+    try:  # If exception happens it probably means there are no buildings
+        for i in C_Plot:
+            i[B == True] = np.nan
+    except Exception:
+        pass
 
     # Invert concentrations
     # Concentrations are positive but PSO minimizes so invert concentrations
     # Don't do the same for C_Plot so visualizations are positive
-    C = C * (-1)
+    for idx, i in enumerate(C):
+        i = i * (-1)
+        C[idx] = i  # For some reason need to reassign instead of just operating on i as done in lines 56-58
 
     # Return values
     return (QuicDomain, X, Y, Z, B, C, C_Plot)

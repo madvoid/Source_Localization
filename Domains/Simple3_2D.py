@@ -28,15 +28,17 @@ if __name__ == "__main__":
     # Turn to 2D
     X = X[:, :, 0]
     Y = Y[:, :, 0]
-    C = np.mean(C, 2)
-    C_Plot = np.mean(C_Plot, 2)
+    C = np.mean(C[0], 2)
+    Ca = np.empty(shape=(1,), dtype=object)
+    Ca[0] = C
+    C_Plot = np.mean(C_Plot[0], 2)
     Simple3Domain = DomainInfo(Simple3Domain.minLims[:2], Simple3Domain.maxLims[:2], Simple3Domain.ds[:2], [100, 80],
                                Simple3Domain.duration, Simple3Domain.avgTime, Simple3Domain.numPeriods,
                                Simple3Domain.sourceLoc[
                                :2])  # Hard code cell count array just for this case to get around bug
 
     # Initialize and run PSO Algorithm
-    Simple3PSO = PSO(C, Simple3Domain, numberParticles=10, maximumIterations=300)
+    Simple3PSO = PSO(Ca, Simple3Domain, numberParticles=10, maximumIterations=300)
     Simple3PSO.run(checkNeighborhood=True)
 
     # Plot "built-in" plots

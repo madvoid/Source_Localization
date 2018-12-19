@@ -22,7 +22,7 @@ if __name__ == "__main__":
     Simple1Domain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/Simple1/Data.mat')
 
     # Initialize and run PSO Algorithm
-    Simple1PSO = PSO(C, Simple1Domain, numberParticles=50, maskArray=B)
+    Simple1PSO = PSO(C, Simple1Domain, numberParticles=50, maskArray=B, maximumIterations=300)
     Simple1PSO.run(checkNeighborhood=True)
 
     # Plot "built-in" plots
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     sLocZ = Simple1Domain.sourceLoc[2]
 
     # Create 2d representation of 3d concentration
-    C_Plot_2d = np.mean(C_Plot, 2)
+    C_Plot_2d = np.mean(C_Plot[0], 2)
 
     # Create Colors
     concentrationMap = 'inferno'

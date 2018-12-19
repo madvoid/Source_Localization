@@ -35,7 +35,7 @@ if __name__ == "__main__":
         convIters[i] = np.argmin(Simple1PSO.bestFitnessHistory)
 
     def reject_outliers(data, m=2):
-        return data[abs(data - np.median(data)) < m * np.std(data)]
+        return data[abs(data - np.mean(data)) < m * np.std(data)]
 
     # Plot and save
     fig, ax = plt.subplots()

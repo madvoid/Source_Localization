@@ -43,7 +43,7 @@ if __name__ == "__main__":
     sLocZ = Simple2Domain.sourceLoc[2]
 
     # Create 2d representation of 3d concentration
-    C_Plot_2d = np.mean(C_Plot, 2)
+    C_Plot_2d = np.mean(C_Plot[0], 2)
 
     # Create Colors
     concentrationMap = 'inferno'

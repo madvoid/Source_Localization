@@ -14,7 +14,9 @@ Five files are required from every QUIC run:
 * `QU_simparams.inp`
 * `QP_source.inp`
 
-The file `Domain_Maker.m` creates a file called `Data.mat` in a run's given folder. This `Data.mat` file is imported into the Python PSO code. Therefore, if a new QUIC simulation is run, `Domain_Maker.m` must be run before any other code is.
+The file `Domain_Maker.m` creates a file called `Data.mat` in a run's given folder. This `Data.mat` file is imported into the Python PSO code. Therefore, if a new QUIC simulation is run, `Domain_Maker.m` must be run before any other code is. 
+
+Until 12/19/2018 there were several test functions in the `Domains` folder. However, these were removed from the repository as the PSO code became more and more tailored to QUIC data.
 
 ## Parameters to Experiment With
 
