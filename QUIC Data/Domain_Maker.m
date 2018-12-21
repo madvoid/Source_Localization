@@ -10,7 +10,7 @@ clear all, clc, close all
 
 
 %% Read Building Data
-folderPath = './Simple3/';
+folderPath = './OKC/';
 
 
 %% Read domain parameters
@@ -54,6 +54,11 @@ domain = qc.celltype{1};
 domain(domain ~= 0) = NaN;
 domain = domain(:,:,2:end);
 
+% Account for OKC data
+if strcmp(folderPath, './OKC/')
+    domain = domain(:,:,1:60);
+end
+
 
 %% Create Plotting Coordinates
 [X, Y, Z] = ndgrid(1:size(domain,1), 1:size(domain,2), 1:size(domain,3)); 
@@ -83,35 +88,35 @@ end
 
 
 %% Plot for visualization
-dIdx = ~isnan(domain);
-plotC = C{1}(:);    % !! May break here depending on number of averaging time periods present in simulation
-meanC = nanmean(plotC);
-stdC = nanstd(plotC);
-lowCIdx = (plotC <= meanC + 2*stdC);    % Low concentrations are plotted different from high concentrations
-hiCIdx = (plotC > meanC + 2*stdC);
-
-figure('units','normalized','outerposition',[0 0 1 1]);
-hold on
-grid on
-
-buildingAlpha = 1.0;
-lowCAlpha = 0.1;
-hiCAlpha = 0.6;
-pointsize = 7;
-
-colormap hot
-plot3(X(dIdx), Y(dIdx), Z(dIdx), 'g.', 'MarkerSize', 75);
-scatter3(X(lowCIdx), Y(lowCIdx), Z(lowCIdx), pointsize, plotC(lowCIdx), 'filled', 'MarkerFaceAlpha',lowCAlpha, 'MarkerEdgeAlpha',lowCAlpha);
-scatter3(X(hiCIdx), Y(hiCIdx), Z(hiCIdx), pointsize, plotC(hiCIdx), 'filled', 'MarkerFaceAlpha',hiCAlpha, 'MarkerEdgeAlpha',hiCAlpha);
-scatter3(sourceLoc(2), sourceLoc(1), sourceLoc(3), 300, 'filled', 'bp');
-axis equal
-xlim([min(X(:)) max(X(:))]);
-ylim([min(Y(:)) max(Y(:))]);
-
-xlabel('x (m)');
-ylabel('y (m)');
-zlabel('z (m)');
-view(2);
+% dIdx = ~isnan(domain);
+% plotC = C{1}(:);    % !! May break here depending on number of averaging time periods present in simulation
+% meanC = nanmean(plotC);
+% stdC = nanstd(plotC);
+% lowCIdx = (plotC <= meanC + 2*stdC);    % Low concentrations are plotted different from high concentrations
+% hiCIdx = (plotC > meanC + 2*stdC);
+% 
+% figure('units','normalized','outerposition',[0 0 1 1]);
+% hold on
+% grid on
+% 
+% buildingAlpha = 1.0;
+% lowCAlpha = 0.1;
+% hiCAlpha = 0.6;
+% pointsize = 7;
+% 
+% colormap hot
+% plot3(X(dIdx), Y(dIdx), Z(dIdx), 'g.', 'MarkerSize', 75);
+% scatter3(X(lowCIdx), Y(lowCIdx), Z(lowCIdx), pointsize, plotC(lowCIdx), 'filled', 'MarkerFaceAlpha',lowCAlpha, 'MarkerEdgeAlpha',lowCAlpha);
+% scatter3(X(hiCIdx), Y(hiCIdx), Z(hiCIdx), pointsize, plotC(hiCIdx), 'filled', 'MarkerFaceAlpha',hiCAlpha, 'MarkerEdgeAlpha',hiCAlpha);
+% scatter3(sourceLoc(2), sourceLoc(1), sourceLoc(3), 300, 'filled', 'bp');
+% axis equal
+% xlim([min(X(:)) max(X(:))]);
+% ylim([min(Y(:)) max(Y(:))]);
+% 
+% xlabel('x (m)');
+% ylabel('y (m)');
+% zlabel('z (m)');
+% view(2);
 
 
 

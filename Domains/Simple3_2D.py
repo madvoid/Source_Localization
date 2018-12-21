@@ -31,7 +31,10 @@ if __name__ == "__main__":
     C = np.mean(C[0], 2)
     Ca = np.empty(shape=(1,), dtype=object)
     Ca[0] = C
-    C_Plot = np.mean(C_Plot[0], 2)
+    with np.errstate(divide='ignore'):
+        C_Plot = np.log(np.mean(C_Plot[0], 2))
+    C_Plot[C_Plot == -np.inf] = 0
+    C_Plot *= -1
     Simple3Domain = DomainInfo(Simple3Domain.minLims[:2], Simple3Domain.maxLims[:2], Simple3Domain.ds[:2], [100, 80],
                                Simple3Domain.duration, Simple3Domain.avgTime, Simple3Domain.numPeriods,
                                Simple3Domain.sourceLoc[

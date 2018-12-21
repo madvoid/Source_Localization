@@ -308,8 +308,10 @@ class PSO:
 
         # Velocity clamping
         k = 0.05  # Velocity clamping constant, this makes a big difference!!!
-        vMax = 0.05 * (self.domain.maxLims - self.domain.minLims)
-        vMin = -1 * vMax
+        # vMax = 0.05 * (self.domain.maxLims - self.domain.minLims)
+        # vMin = -1 * vMax
+        vMax = 15
+        vMin = -1*vMax
 
         # Create new velocity and clamp it
         R1 = np.random.rand(self.domain.dimension)
@@ -322,10 +324,11 @@ class PSO:
             newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
         else:
             newVel = particle.velocity + cogComp + socComp
-            newVel = newVel * k
+            # newVel = newVel * k
+            newVel[newVel > vMax] = vMax
+            newVel[newVel < vMin] = vMin
         # TODO: Play with this section to change behavior
-        # newVel[newVel > vMax] = vMax[newVel > vMax]
-        # newVel[newVel < vMin] = vMin[newVel < vMin]
+
         return newVel
 
     def run(self, checkNeighborhood=False, verbose=True):
@@ -350,10 +353,16 @@ class PSO:
                 newVel = self.generateVelocity(particle)
                 newPos = particle.position + newVel
                 if not self.checkPosition(newPos):
+                    blockCount = 0
                     while True:
                         newVel = altVector(newVel)
                         newPos = particle.position + newVel
+                        blockCount += 1
                         if self.checkPosition(newPos):
+                            break
+                        if blockCount == 5:
+                            newVel = np.zeros(newVel.shape)
+                            newPos = particle.position + newVel
                             break
 
                 # Update velocity, position, fitness

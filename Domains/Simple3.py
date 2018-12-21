@@ -47,8 +47,11 @@ if __name__ == "__main__":
     sLocY = Simple3Domain.sourceLoc[1]
     sLocZ = Simple3Domain.sourceLoc[2]
 
-    # Create 2d representation of 3d concentration
-    C_Plot_2d = np.mean(C_Plot[0], 2)
+    # Create 2d representation of 3d concentration, use log scale to highlight differences
+    with np.errstate(divide='ignore'):
+        C_Plot_2d = np.log(np.mean(C_Plot[0], 2))
+    C_Plot_2d[C_Plot_2d == -np.inf] = 0
+    C_Plot_2d *= -1
 
     # Create Colors
     concentrationMap = 'inferno'
