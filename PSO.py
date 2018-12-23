@@ -69,7 +69,7 @@ class Particle:
         self.currentFitness = self.updateFitness(costArray)  # Current fitness of particle
         self.pBestPosition = self.position  # Best location of particle
         self.pBestFitness = self.currentFitness  # Fitness of personal best position
-        self.fitnessHistory = np.zeros(maximumIterations)  # History of particle fitness
+        self.fitnessHistory = np.ones(maximumIterations)  # History of particle fitness
         self.positionHistory = np.zeros([maximumIterations, self.domain.dimension])  # History of particle position
         self.fitnessHistory[0] = self.currentFitness
         self.positionHistory[0, :] = self.position
@@ -136,7 +136,6 @@ class PSO:
         """
         self.costArray = costArray[0]  # Array of values of cost function for first time step
         self.totalCostArray = costArray  # Cost function, all time steps
-        self.currentTimeStep = 0  # Current time step
         self.maskArray = maskArray
         self.domain = domainClass  # DomainInfo instance about current domain
         self.maxIter = maximumIterations  # Maximum number of iterations
@@ -150,7 +149,13 @@ class PSO:
         self.bestFitnessHistory = np.zeros(self.maxIter)  # Keep track of best fitness so far
         self.bestPositionHistory[0, :] = self.globalBest.position
         self.bestFitnessHistory[0] = self.globalBest.currentFitness
+        self.distNorm = -1*np.ones(self.maxIter)   # History of distance norm between particles
         self.stuckCheckVal = 5  # Number of times particle should be in neighborhood before force leave
+        self.currentTime = 0  # Current time step (s)
+        self.currentPeriod = 0  # Next period to check against
+        self.deltaT = 60    # Time each iteration of PSO should represent (s)
+        self.timeChanges = [(i+1)*self.domain.avgTime for i in range(self.domain.numPeriods)]   # When concentration field should change (s)
+        self.stopIter = -1  # Iteration that PSO stops on
 
     def __repr__(self):
         return f'PSO instance with {self.numParticles} particles'
@@ -312,6 +317,7 @@ class PSO:
         # vMin = -1 * vMax
         vMax = 15
         vMin = -1*vMax
+        vMaxArr = vMax*np.ones(particle.velocity.shape)
 
         # Create new velocity and clamp it
         R1 = np.random.rand(self.domain.dimension)
@@ -321,17 +327,17 @@ class PSO:
         if (all(cogComp == 0) and all(socComp == 0)) or (
                 particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
             particle.isStuck = False
-            newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
+            # newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
+            newVel = np.random.uniform(self.domain.ds, vMaxArr) # New velocity is random number between grid spacing and vMax
         else:
             newVel = particle.velocity + cogComp + socComp
             # newVel = newVel * k
             newVel[newVel > vMax] = vMax
             newVel[newVel < vMin] = vMin
-        # TODO: Play with this section to change behavior
 
         return newVel
 
-    def run(self, checkNeighborhood=False, verbose=True):
+    def run(self, checkNeighborhood=False, verbose=True, timeVarying=False):
         """
         Run the particle swarm algorithm. All parameters are set in __init__
 
@@ -342,7 +348,6 @@ class PSO:
         # May change in future
         altVector = self.rotateVector
 
-        self.distNorm = np.ones(self.maxIter)
         self.distNorm[0] = self.getDistanceNorm(0)
 
         # Start iterations
@@ -388,12 +393,26 @@ class PSO:
             # Get idea of distance between particles
             self.distNorm[i] = self.getDistanceNorm(i)
 
+            # Account for time
+            if timeVarying:
+                self.currentTime += self.deltaT
+                if self.currentTime >= self.domain.duration:
+                    print(f"Reached simulation duration end. Ending iterations.")
+                    break
+                if self.currentTime >= self.timeChanges[self.currentPeriod]:
+                    self.currentPeriod += 1
+                    self.costArray = self.totalCostArray[self.currentPeriod]
+                    print(f"Averaging period finished. Switching to next cost function")
+
             # Print
             if verbose:
-                print(
-                    f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
+                if timeVarying:
+                    print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness} || Current Time: {self.currentTime}")
+                else:
+                    print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
         # Finish up
+        self.stopIter = i
         if verbose:
             print("\nFinished Iterations")
 
@@ -404,14 +423,14 @@ class PSO:
         :return: Handle for figure
         """
         fig, ax = plt.subplots()
-        ax.plot(self.bestFitnessHistory)
+        ax.plot(self.bestFitnessHistory[0:self.stopIter])
         ax.set_title('Convergence')
         plt.show()
         return fig
 
     def plotDistanceNorm(self):
         fig, ax = plt.subplots()
-        ax.plot(self.distNorm)
+        ax.plot(self.distNorm[0:self.stopIter])
         ax.set_title('Distance Norm')
         plt.show()
         return fig
@@ -471,3 +490,18 @@ def reslice3D(X, dVal):
     :return:
     """
     return X[::dVal, ::dVal, ::dVal]
+
+
+def flattenPlotQuic(timeStep, cArr):
+    """
+    Flatten a 3D quic simulation at a given time to 2D for plotting
+
+    :param timeStep: Time step of quic simulation to flatten
+    :param cArr: quic simulation concentration array
+    :return: flattened array
+    """
+    with np.errstate(divide='ignore'):
+        f = np.log(np.mean(cArr[timeStep], 2))
+    f[f == -np.inf] = 0
+    f *= -1
+    return f
