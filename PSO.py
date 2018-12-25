@@ -69,7 +69,7 @@ class Particle:
         self.currentFitness = self.updateFitness(costArray)  # Current fitness of particle
         self.pBestPosition = self.position  # Best location of particle
         self.pBestFitness = self.currentFitness  # Fitness of personal best position
-        self.fitnessHistory = np.ones(maximumIterations)  # History of particle fitness
+        self.fitnessHistory = np.zeros(maximumIterations)  # History of particle fitness
         self.positionHistory = np.zeros([maximumIterations, self.domain.dimension])  # History of particle position
         self.fitnessHistory[0] = self.currentFitness
         self.positionHistory[0, :] = self.position
@@ -124,7 +124,7 @@ class Particle:
 
 
 class PSO:
-    def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000, maskArray=None):
+    def __init__(self, costArray, domainClass, numberParticles=25, maximumIterations=1000, maskArray=None, tStartIndex = 0):
         """
         Initialize PSO class
 
@@ -133,8 +133,10 @@ class PSO:
         :param numberParticles: Number of particles to run PSO with
         :param maximumIterations: Maximum iterations for PSO
         :param maskArray: Boolean array that is true where there is a building and false where there isn't
+        :param startIndex: Which cost array to start with. !! This should always be 0 if using time varying code !!
         """
-        self.costArray = costArray[0]  # Array of values of cost function for first time step
+        self.tStartIndex = tStartIndex
+        self.costArray = costArray[self.tStartIndex]  # Array of values of cost function for first time step   TODO: Add capability to change '0'
         self.totalCostArray = costArray  # Cost function, all time steps
         self.maskArray = maskArray
         self.domain = domainClass  # DomainInfo instance about current domain
@@ -150,6 +152,7 @@ class PSO:
         self.bestPositionHistory[0, :] = self.globalBest.position
         self.bestFitnessHistory[0] = self.globalBest.currentFitness
         self.distNorm = -1*np.ones(self.maxIter)   # History of distance norm between particles
+        self.distNorm[0] = self.getDistanceNorm(0)
         self.stuckCheckVal = 5  # Number of times particle should be in neighborhood before force leave
         self.currentTime = 0  # Current time step (s)
         self.currentPeriod = 0  # Next period to check against
@@ -293,11 +296,12 @@ class PSO:
         else:
             raise ValueError('Domain is not 2 or 3 dimensions!')
 
-    def generateVelocity(self, particle):
+    def generateVelocity(self, particle, random=False):
         """
         Generate new velocity for particle class
 
         :param particle: Instance of Particle class
+        :param random: If true, just return random velocity, don't do rest of PSO math
         :return: New velocity, ndarray of size 1xnDim. Particle is NOT updated in this function
         """
         # Establish Constants
@@ -319,7 +323,11 @@ class PSO:
         vMin = -1*vMax
         vMaxArr = vMax*np.ones(particle.velocity.shape)
 
-        # Create new velocity and clamp it
+        if random:
+            newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
+            return newVel
+
+        # Create new velocity and clamp it  TODO: If particle is zero, go to *current* global best, not best overall (Maybe, think first)
         R1 = np.random.rand(self.domain.dimension)
         R2 = np.random.rand(self.domain.dimension)
         cogComp = c1 * (particle.pBestPosition - particle.position) * R1
@@ -327,8 +335,7 @@ class PSO:
         if (all(cogComp == 0) and all(socComp == 0)) or (
                 particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
             particle.isStuck = False
-            # newVel = np.random.uniform(vMin, vMax, particle.velocity.shape)
-            newVel = np.random.uniform(self.domain.ds, vMaxArr) # New velocity is random number between grid spacing and vMax
+            newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
         else:
             newVel = particle.velocity + cogComp + socComp
             # newVel = newVel * k
@@ -348,14 +355,18 @@ class PSO:
         # May change in future
         altVector = self.rotateVector
 
-        self.distNorm[0] = self.getDistanceNorm(0)
+        # Initialize local vars and prepare for runs
+        simFinishedFlag = False
 
         # Start iterations
         for i in range(1, self.maxIter):
             for pIdx, particle in enumerate(self.particles):
 
                 # Generate new velocity
-                newVel = self.generateVelocity(particle)
+                if all(self.getAllFitness(i) == 0):
+                    newVel = self.generateVelocity(particle, random=True)   # If all particles are reading 0, move randomly
+                else:
+                    newVel = self.generateVelocity(particle)
                 newPos = particle.position + newVel
                 if not self.checkPosition(newPos):
                     blockCount = 0
@@ -365,9 +376,8 @@ class PSO:
                         blockCount += 1
                         if self.checkPosition(newPos):
                             break
-                        if blockCount == 5:
-                            newVel = np.zeros(newVel.shape)
-                            newPos = particle.position + newVel
+                        if blockCount == 5: # Sometimes particle gets very stuck, go back to old position
+                            newPos = particle.positionHistory[i-1]
                             break
 
                 # Update velocity, position, fitness
@@ -394,43 +404,55 @@ class PSO:
             self.distNorm[i] = self.getDistanceNorm(i)
 
             # Account for time
-            if timeVarying:
+            if (timeVarying):
                 self.currentTime += self.deltaT
-                if self.currentTime >= self.domain.duration:
-                    print(f"Reached simulation duration end. Ending iterations.")
-                    break
-                if self.currentTime >= self.timeChanges[self.currentPeriod]:
-                    self.currentPeriod += 1
-                    self.costArray = self.totalCostArray[self.currentPeriod]
-                    print(f"Averaging period finished. Switching to next cost function")
+                if not simFinishedFlag:
+                    if self.currentTime >= self.domain.duration:
+                        print(f"Reached simulation duration end. Ending iterations.")
+                        self.stopIter = i
+                        simFinishedFlag = True
+                    elif (self.currentTime >= self.timeChanges[self.currentPeriod]):
+                        self.currentPeriod += 1
+                        self.costArray = self.totalCostArray[self.currentPeriod]
+                        print(f"Averaging period finished. Switching to next cost function")
 
             # Print
             if verbose:
                 if timeVarying:
-                    print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness} || Current Time: {self.currentTime}")
+                    print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness} || Current Time: {self.currentTime} s")
                 else:
                     print(f"Iteration: {i} || Best Position: {self.globalBest.position} || Best Fitness: {self.globalBest.currentFitness}")
 
         # Finish up
-        self.stopIter = i
         if verbose:
             print("\nFinished Iterations")
 
-    def plotConvergence(self):
+    def plotConvergence(self, stop=None):
         """
         Plot best fitness of all particles vs iteration
 
+        :param stop: x-axis limit for plotting, iteration "stop point"
         :return: Handle for figure
         """
+        if stop is None:
+            stop = len(self.bestFitnessHistory)
         fig, ax = plt.subplots()
-        ax.plot(self.bestFitnessHistory[0:self.stopIter])
+        ax.plot(self.bestFitnessHistory[0:stop])
         ax.set_title('Convergence')
         plt.show()
         return fig
 
-    def plotDistanceNorm(self):
+    def plotDistanceNorm(self, stop=None):
+        """
+        Plot distance norm of all particles vs iteration
+
+        :param stop: x-axis limit for plotting, iteration "stop point"
+        :return:
+        """
+        if stop is None:
+            stop = len(self.distNorm)
         fig, ax = plt.subplots()
-        ax.plot(self.distNorm[0:self.stopIter])
+        ax.plot(self.distNorm[0:stop])
         ax.set_title('Distance Norm')
         plt.show()
         return fig
@@ -443,6 +465,15 @@ class PSO:
         :return: Array of positions of all particles at given iteration, size nPoints x nDims
         """
         return np.array([p.positionHistory[iteration, :] for p in self.particles])
+
+    def getAllFitness(self, iteration):
+        """
+        Return the fitness of all the particles at a given iteration.
+
+        :param iteration: Iteration of PSO where fitness for all particles is desired
+        :return: Array of fitness of all particles at a give iteration
+        """
+        return np.array([p.fitnessHistory[iteration] for p in self.particles])
 
 
 def rebin(ndarray, dVal, operation='mean'):

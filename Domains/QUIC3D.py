@@ -17,15 +17,21 @@ from MatRead import readQUICMat
 
 if __name__ == "__main__":
     # Create save path
-    baseName = 'OKC'
+    baseName = 'Quad_Edge'
     basePath = '../Results/' + baseName + '/' + baseName + '_'
     timeVaryingFlag = True
+
+    # Set start index
+    if timeVaryingFlag:
+        timeStartIndex = 0
+    else:
+        timeStartIndex = 0
 
     # Retrieve domain and data
     quicDomain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/' + baseName + '/Data.mat')
 
     # Initialize PSO Algorithm
-    quicPSO = PSO(C, quicDomain, numberParticles=50, maskArray=B, maximumIterations=300)
+    quicPSO = PSO(C, quicDomain, numberParticles=50, maskArray=B, maximumIterations=1000, tStartIndex=timeStartIndex)
 
     # Prepare time-varying vars
     if timeVaryingFlag:
@@ -36,8 +42,11 @@ if __name__ == "__main__":
     # Run PSO
     quicPSO.run(checkNeighborhood=True, timeVarying=timeVaryingFlag)
 
+    # Calculate points to show
+    stopPoint = np.argmin(quicPSO.bestFitnessHistory) + 50  # When to stop iterations
+
     # Plot "built-in" plots
-    fig = quicPSO.plotConvergence()
+    fig = quicPSO.plotConvergence(stop=stopPoint)
     fig.savefig(basePath + 'Convergence.pdf')
     fig = quicPSO.plotDistanceNorm()
     fig.savefig(basePath + 'DistNorm.pdf')
@@ -54,7 +63,7 @@ if __name__ == "__main__":
     sLocZ = quicDomain.sourceLoc[2]
 
     # Create 2d representation of 3d concentration, use log scale to highlight differences
-    C_Plot_2d = flattenPlotQuic(0, C_Plot)
+    C_Plot_2d = flattenPlotQuic(timeStartIndex, C_Plot)
 
     # Create Colors
     concentrationMap = 'inferno'
@@ -65,7 +74,7 @@ if __name__ == "__main__":
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
     ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
-    ax.plot(quicPSO.bestPositionHistory[0:quicPSO.stopIter, 0], quicPSO.bestPositionHistory[0:quicPSO.stopIter, 1], color=lineMap, linestyle=':',
+    ax.plot(quicPSO.bestPositionHistory[0:stopPoint, 0], quicPSO.bestPositionHistory[0:stopPoint, 1], color=lineMap, linestyle=':',
             marker='.')
     ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=10)  # Actual best position
     ax.set_title('Best Location Convergence')
@@ -85,9 +94,7 @@ if __name__ == "__main__":
     scat = ax.scatter(*quicPSO.getCurrentPoints(0)[:, 0:2].T, c=normalize(quicPSO.getCurrentPoints(0)[:, 2]), marker='.', cmap=zMap)
     scatCol = plt.get_cmap(zMap)                            # To change colors in animate
     if timeVaryingFlag:
-        stopPoint = quicPSO.stopIter
-    else:
-        stopPoint = np.argmin(quicPSO.bestFitnessHistory) + 25  # When to stop iterations
+        simStopPoint = quicPSO.stopIter
 
     def animate(i):
         global currentPeriod
@@ -95,7 +102,7 @@ if __name__ == "__main__":
         scat.set_color(scatCol(normalize(quicPSO.getCurrentPoints(i)[:, 2])))   # New elevation
         if timeVaryingFlag:     # Change cost function
             currentTime = i*deltaT
-            if currentTime >= timeChanges[currentPeriod]:
+            if currentTime >= timeChanges[currentPeriod] and (i < simStopPoint):
                 currentPeriod += 1
                 C_Plot_2d = flattenPlotQuic(currentPeriod, C_Plot)
                 ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
@@ -105,8 +112,10 @@ if __name__ == "__main__":
             ax.set_title(f'Live Convergence :: Iteration {i}')
         return scat,
 
+    print("Making Video...")
     anim = FuncAnimation(fig, animate, interval=150, frames=stopPoint, blit=True)
     anim.save(basePath + '.mp4', extra_args=['-vcodec', 'libx264'])
     # anim.save('quic.gif', writer='imagemagick')
 
     plt.show()
+    print("Script Finished")

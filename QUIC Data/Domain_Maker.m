@@ -10,7 +10,7 @@ clear all, clc, close all
 
 
 %% Read Building Data
-folderPath = './OKC/';
+folderPath = './Quad_Edge/';
 
 
 %% Read domain parameters
