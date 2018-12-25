@@ -136,7 +136,7 @@ class PSO:
         :param startIndex: Which cost array to start with. !! This should always be 0 if using time varying code !!
         """
         self.tStartIndex = tStartIndex
-        self.costArray = costArray[self.tStartIndex]  # Array of values of cost function for first time step   TODO: Add capability to change '0'
+        self.costArray = costArray[self.tStartIndex]  # Array of values of cost function for first time step
         self.totalCostArray = costArray  # Cost function, all time steps
         self.maskArray = maskArray
         self.domain = domainClass  # DomainInfo instance about current domain
@@ -327,7 +327,7 @@ class PSO:
             newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
             return newVel
 
-        # Create new velocity and clamp it  TODO: If particle is zero, go to *current* global best, not best overall (Maybe, think first)
+        # Create new velocity and clamp it
         R1 = np.random.rand(self.domain.dimension)
         R2 = np.random.rand(self.domain.dimension)
         cogComp = c1 * (particle.pBestPosition - particle.position) * R1
