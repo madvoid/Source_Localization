@@ -99,6 +99,9 @@ class Particle:
         self.currentFitness = costArray[self.getIndex()]
         return self.currentFitness
 
+    def getFitness(self, costArray):
+        return costArray[self.getIndex()]
+
     def updateHistory(self, currentIteration):
         """
         Update history arrays with fitness and position
@@ -159,6 +162,8 @@ class PSO:
         self.deltaT = 60    # Time each iteration of PSO should represent (s)
         self.timeChanges = [(i+1)*self.domain.avgTime for i in range(self.domain.numPeriods)]   # When concentration field should change (s)
         self.stopIter = -1  # Iteration that PSO stops on
+        self.checkStuckParticle = None     # Flag to turn on and off stuck check routine
+
 
     def __repr__(self):
         return f'PSO instance with {self.numParticles} particles'
@@ -306,6 +311,7 @@ class PSO:
         """
         # Establish Constants
         if particle.pBestFitness == 0.0:  # QUIC specific addition, don't weight empty spots heavily
+        # if particle.currentFitness == 0.0:
             c1 = 0.5
             c2 = 3.5
         else:
@@ -334,21 +340,29 @@ class PSO:
         socComp = c2 * (self.globalBest.position - particle.position) * R2
         if (all(cogComp == 0) and all(socComp == 0)) or (
                 particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
-            particle.isStuck = False
-            newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
+            if self.checkStuckParticle:
+                particle.isStuck = False
+                newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
+            else:
+                newVel = particle.velocity + cogComp + socComp
+                newVel[newVel > vMax] = vMax
+                newVel[newVel < vMin] = vMin
         else:
             newVel = particle.velocity + cogComp + socComp
-            # newVel = newVel * k
             newVel[newVel > vMax] = vMax
             newVel[newVel < vMin] = vMin
 
         return newVel
 
-    def run(self, checkNeighborhood=False, verbose=True, timeVarying=False):
+    def run(self, checkNeighborhood=True, verbose=True, timeVarying=False, checkStuckParticle=True):
         """
         Run the particle swarm algorithm. All parameters are set in __init__
 
-        :return: None
+        :param checkNeighborhood: Flag to turn off/on check neighborhood routine
+        :param verbose: Flag to turn off/on printing
+        :param timeVarying: Flag to tell PSO whether to use timeVarying plume or not
+        :param checkStuckParticle: Flag to turn off/on stuck particle check routine
+        :return: Handle for figure
         """
         # Set altVector to function used to produce alternate velocity vector if original is not allowed
         # All functions should have same inputs, for now functions are a part of this class
@@ -356,14 +370,15 @@ class PSO:
         altVector = self.rotateVector
 
         # Initialize local vars and prepare for runs
-        simFinishedFlag = False
+        simFinishedFlag = False     # When this flag becomes True, PSO will still iterate but the time varying plume won't change
+        self.checkStuckParticle = checkStuckParticle
 
         # Start iterations
         for i in range(1, self.maxIter):
             for pIdx, particle in enumerate(self.particles):
 
                 # Generate new velocity
-                if all(self.getAllFitness(i) == 0):
+                if all(self.getAllFitness(self.costArray) == 0):
                     newVel = self.generateVelocity(particle, random=True)   # If all particles are reading 0, move randomly
                 else:
                     newVel = self.generateVelocity(particle)
@@ -376,7 +391,7 @@ class PSO:
                         blockCount += 1
                         if self.checkPosition(newPos):
                             break
-                        if blockCount == 5: # Sometimes particle gets very stuck, go back to old position
+                        if blockCount == 4: # Sometimes particle gets very stuck, go back to old position
                             newPos = particle.positionHistory[i-1]
                             break
 
@@ -466,14 +481,14 @@ class PSO:
         """
         return np.array([p.positionHistory[iteration, :] for p in self.particles])
 
-    def getAllFitness(self, iteration):
+    def getAllFitness(self, costArray):
         """
         Return the fitness of all the particles at a given iteration.
 
-        :param iteration: Iteration of PSO where fitness for all particles is desired
-        :return: Array of fitness of all particles at a give iteration
+        :param costArray: Current cost array
+        :return: Array of current fitness of all particles at a given iteration
         """
-        return np.array([p.fitnessHistory[iteration] for p in self.particles])
+        return np.array([p.getFitness(costArray) for p in self.particles])
 
 
 def rebin(ndarray, dVal, operation='mean'):

@@ -17,9 +17,13 @@ from MatRead import readQUICMat
 
 if __name__ == "__main__":
     # Create save path
-    baseName = 'Quad_Edge'
+    # baseName = 'OKC'
+    # baseName = 'Quad_Center'
+    # baseName = 'Quad_Corner'
+    # baseName = 'Quad_Edge'
+    baseName = 'Simple3'
     basePath = '../Results/' + baseName + '/' + baseName + '_'
-    timeVaryingFlag = True
+    timeVaryingFlag = False
 
     # Set start index
     if timeVaryingFlag:
@@ -31,7 +35,8 @@ if __name__ == "__main__":
     quicDomain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/' + baseName + '/Data.mat')
 
     # Initialize PSO Algorithm
-    quicPSO = PSO(C, quicDomain, numberParticles=50, maskArray=B, maximumIterations=1000, tStartIndex=timeStartIndex)
+    numParticles = 30
+    quicPSO = PSO(C, quicDomain, numberParticles=numParticles, maskArray=B, maximumIterations=300, tStartIndex=timeStartIndex)
 
     # Prepare time-varying vars
     if timeVaryingFlag:
@@ -40,10 +45,13 @@ if __name__ == "__main__":
         timeChanges = [(i+1)*quicDomain.avgTime for i in range(quicDomain.numPeriods)]
 
     # Run PSO
-    quicPSO.run(checkNeighborhood=True, timeVarying=timeVaryingFlag)
+    quicPSO.run(checkNeighborhood=True, timeVarying=timeVaryingFlag, checkStuckParticle=True)
 
     # Calculate points to show
-    stopPoint = np.argmin(quicPSO.bestFitnessHistory) + 50  # When to stop iterations
+    stopBuf = 50
+    stopPoint = np.argmin(quicPSO.bestFitnessHistory) + stopBuf  # When to stop iterations
+    frameSave = np.round(np.linspace(0, stopPoint-stopBuf, num=6)).astype(int)
+    frameCount = 0
 
     # Plot "built-in" plots
     fig = quicPSO.plotConvergence(stop=stopPoint)
@@ -98,6 +106,7 @@ if __name__ == "__main__":
 
     def animate(i):
         global currentPeriod
+        global frameCount
         scat.set_offsets(quicPSO.getCurrentPoints(i)[:, 0:2])   # New x,y positions
         scat.set_color(scatCol(normalize(quicPSO.getCurrentPoints(i)[:, 2])))   # New elevation
         if timeVaryingFlag:     # Change cost function
@@ -107,9 +116,13 @@ if __name__ == "__main__":
                 C_Plot_2d = flattenPlotQuic(currentPeriod, C_Plot)
                 ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
                 scat.set_zorder(10)
-            ax.set_title(f'Live Convergence :: Iteration {i} :: Time {currentTime} s')
+            ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i} :: Time {currentTime} s')
         else:
-            ax.set_title(f'Live Convergence :: Iteration {i}')
+            ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i}')
+        if frameCount < len(frameSave):
+            if i == frameSave[frameCount]:
+                plt.savefig(basePath+'Frame'+str(frameCount)+'.png')
+                frameCount += 1
         return scat,
 
     print("Making Video...")

@@ -16,7 +16,7 @@ from MatRead import readQUICMat
 
 if __name__ == "__main__":
     # Create save path
-    baseName = 'OKC'
+    baseName = 'Simple3'
     basePath = '../Results/' + baseName + '/Statistics/' + baseName + '_'
 
     # Retrieve domain and data
@@ -24,36 +24,54 @@ if __name__ == "__main__":
 
     # Prepare
     numParticles = 50
+    numParticlesList = [10, 20, 30, 40, 50]
     numIters = 100
-    bestLocs = np.zeros((numIters, quicDomain.dimension))
-    convIters = np.zeros(numIters)
+    bestLocs = np.zeros((numIters, quicDomain.dimension, len(numParticlesList)))
+    convIters = np.zeros((numIters, len(numParticlesList)))
 
     # Iterate
-    for i in tqdm(range(numIters)):
-        quicPSO = PSO(C, quicDomain, numberParticles=numParticles, maskArray=B, maximumIterations=300)
-        quicPSO.run(checkNeighborhood=True, verbose=False)
-        bestLocs[i,:] = quicPSO.bestPositionHistory[-1:,:]
-        convIters[i] = np.argmin(quicPSO.bestFitnessHistory)
+    for jIdx, j in tqdm(enumerate(numParticlesList)):
+        for i in tqdm(range(numIters)):
+            quicPSO = PSO(C, quicDomain, numberParticles=j, maskArray=B, maximumIterations=300)
+            quicPSO.run(checkNeighborhood=True, verbose=False)
+            bestLocs[i,:,jIdx] = quicPSO.bestPositionHistory[-1:,:]
+            convIters[i, jIdx] = np.argmin(quicPSO.bestFitnessHistory)
 
     # Calculate nondimensional distance
-    dist = np.linalg.norm(bestLocs - quicDomain.sourceLoc, ord=2, axis=1) / np.linalg.norm(quicDomain.maxLims - quicDomain.minLims, ord=2)
+    dist = np.zeros((numIters, len(numParticlesList)))
+    distSort = np.zeros(dist.shape)
+    for jIdx, j in enumerate(numParticlesList):
+        dist[:,jIdx] = np.linalg.norm(bestLocs[:,:,jIdx] - quicDomain.sourceLoc, ord=2, axis=1) / np.linalg.norm(quicDomain.maxLims - quicDomain.minLims, ord=2)
 
-    # Prepare CDF for dist
-    distSort = np.sort(dist)
+    # Prepare CDF for distOn
+    for jIdx, j in enumerate(numParticlesList):
+        distSort[:,jIdx] = np.sort(dist[:,jIdx])
     pDist = np.array(range(len(dist))) / float(len(dist))
 
     # Plot and save
     sns.set()
     fig, ax = plt.subplots()
-    sns.distplot(convIters, rug=True, axlabel='Convergence Iterations')
-    ax.set_title(f'Number of Particles: {numParticles} || Iterations: {numIters}')
+    for i in range(len(numParticlesList)):
+        sns.distplot(convIters[:,i], kde=False, norm_hist=False, label=str(numParticlesList[i])+'Particles')
+    ax.set_title(f'Number of Iterations to Convergence')
+    ax.set_xlabel('Convergence Iterations (Limited to 300)')
+    ax.legend()
     fig.savefig(basePath + 'ConvIters.pdf')
 
-    fig, axes = plt.subplots(2, 1)
-    ax = sns.distplot(dist, rug=True, kde=False, axlabel='deltaS/L', ax=axes[0])
-    ax.set_title(f'Number of Particles: {numParticles} || Iterations: {numIters} || Grid Spacing: {quicDomain.ds}')
-    ax = sns.lineplot(x = distSort, y = pDist, ax=axes[1])
+    fig, ax = plt.subplots()
+    for i in range(len(numParticlesList)):
+        ax = sns.lineplot(x = distSort[:,i], y = pDist, ax=ax, label=str(numParticlesList[i])+'Particles')
     ax.set_xlabel('deltaS/L')
+    ax.set_ylabel('Percent of Runs')
+    ax.legend()
     fig.savefig(basePath + 'FoundLocs.pdf')
+
+    fig, ax = plt.subplots()
+    for i in range(len(numParticlesList)):
+        plt.semilogx(distSort[:,i], pDist)
+    ax.set_xlabel('deltaS/L')
+    ax.set_ylabel('Percent of Runs')
+    ax.legend([str(i)+'Particles' for i in numParticlesList])
+    fig.savefig(basePath + 'FoundLocsLog.pdf')
 
     plt.show()
