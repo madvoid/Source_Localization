@@ -58,7 +58,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     sns.distplot(convItersOn, kde=False, norm_hist=False, label='Checks On')
     sns.distplot(convItersOff, kde=False, norm_hist=False, label='Checks Off')
-    ax.set_title(f'Number of Iterations to Convergence')
+    ax.set_title(f'(a)')
     ax.set_xlabel('Convergence Iterations (Limited to 300)')
     ax.legend()
     fig.savefig(basePath + 'Checks_' + 'ConvIters.pdf')
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     ax = sns.lineplot(x = distSortOff, y = pDist, ax=ax, label='Checks Off')
     ax.set_xlabel('deltaS/L')
     ax.set_ylabel('Percent of Runs')
+    ax.set_title('(b)')
     ax.legend()
     fig.savefig(basePath + 'Checks_' + 'FoundLocs.pdf')
 
@@ -76,6 +77,7 @@ if __name__ == "__main__":
     plt.semilogx(distSortOff, pDist)
     ax.set_xlabel('deltaS/L')
     ax.set_ylabel('Percent of Runs')
+    ax.set_title('(c)')
     ax.legend(['Checks On', 'Checks Off'])
     fig.savefig(basePath + 'Checks_' + 'FoundLocsLog.pdf')
 

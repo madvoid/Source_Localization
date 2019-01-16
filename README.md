@@ -18,25 +18,3 @@ The file `Domain_Maker.m` creates a file called `Data.mat` in a run's given fold
 
 Until 12/19/2018 there were several test functions in the `Domains` folder. However, these were removed from the repository as the PSO code became more and more tailored to QUIC data.
 
-## Parameters to Experiment With
-
-PSO has several different parameters and hyperparameters that can be modified, as well as several modifications that can be made. The following list presents, in no particular order, things that can be modified with this implementation of PSO.
-
-* Velocity update constants `c1, c2`
-* Velocity clamping options or inertia weight decrease
-* Boundary offset
-* Moving integer vs real number
-* Incorporate wind into velocity update
-* Velocity update rules for discrete domain
-* What to do when drone is in building
-  * Just move in direction that's not building
-  * Recalculate velocity with random component
-  * Move in different way, ray tracing?
-* Adaptive weights, every time an unreachable position comes up weights change to move away from that position
-* Have continuous position but convert to discrete index to check if in no-go zone
-* Add mean wind vector or mean concentration gradient as vector to PSO update 
-* Add "exploding factor" when mean wind changes to really explore area
-
-## TODO
-
-1. 

@@ -6,6 +6,7 @@
 # Purpose: Test PSO on a QUIC simulation
 # -------------------------------------------------------------------------------------------------
 
+import os
 import sys
 import itertools
 from matplotlib.animation import FuncAnimation
@@ -18,18 +19,18 @@ from MatRead import readQUICMat
 if __name__ == "__main__":
     # Create save path
     # baseName = 'OKC'
-    # baseName = 'Quad_Center'
     # baseName = 'Quad_Corner'
+    baseName = 'Quad_Center'
     # baseName = 'Quad_Edge'
-    baseName = 'Simple3'
+    # baseName = 'Simple3'
     basePath = '../Results/' + baseName + '/' + baseName + '_'
-    timeVaryingFlag = False
+    timeVaryingFlag = True
 
     # Set start index
     if timeVaryingFlag:
         timeStartIndex = 0
     else:
-        timeStartIndex = 0
+        timeStartIndex = 3
 
     # Retrieve domain and data
     quicDomain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/' + baseName + '/Data.mat')
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
     ax.plot(quicPSO.bestPositionHistory[0:stopPoint, 0], quicPSO.bestPositionHistory[0:stopPoint, 1], color=lineMap, linestyle=':',
             marker='.')
-    ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=10)  # Actual best position
+    ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath + 'Best_Path.pdf')
     plt.show()
@@ -115,6 +116,7 @@ if __name__ == "__main__":
                 currentPeriod += 1
                 C_Plot_2d = flattenPlotQuic(currentPeriod, C_Plot)
                 ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
+                ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
                 scat.set_zorder(10)
             ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i} :: Time {currentTime} s')
         else:

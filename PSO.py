@@ -162,7 +162,7 @@ class PSO:
         self.deltaT = 60    # Time each iteration of PSO should represent (s)
         self.timeChanges = [(i+1)*self.domain.avgTime for i in range(self.domain.numPeriods)]   # When concentration field should change (s)
         self.stopIter = -1  # Iteration that PSO stops on
-        self.checkStuckParticle = None     # Flag to turn on and off stuck check routine
+        self.checkStuckParticle = True     # Flag to turn on and off stuck check routine
 
 
     def __repr__(self):
@@ -310,8 +310,8 @@ class PSO:
         :return: New velocity, ndarray of size 1xnDim. Particle is NOT updated in this function
         """
         # Establish Constants
-        if particle.pBestFitness == 0.0:  # QUIC specific addition, don't weight empty spots heavily
-        # if particle.currentFitness == 0.0:
+        if particle.pBestFitness == 0.0: # QUIC specific addition, don't weight empty spots heavily
+        # if particle.currentFitness == 0.0:    # The runs made for the paper do NOT have this line active
             c1 = 0.5
             c2 = 3.5
         else:
@@ -333,16 +333,17 @@ class PSO:
             newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
             return newVel
 
-        # Create new velocity and clamp it
+        # Generate components for new velocity
         R1 = np.random.rand(self.domain.dimension)
         R2 = np.random.rand(self.domain.dimension)
         cogComp = c1 * (particle.pBestPosition - particle.position) * R1
         socComp = c2 * (self.globalBest.position - particle.position) * R2
-        if (all(cogComp == 0) and all(socComp == 0)) or (
-                particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
-            if self.checkStuckParticle:
+
+        # Generate new velocity
+        if self.checkStuckParticle:
+            if (all(cogComp == 0) and all(socComp == 0)) or (particle.isStuck):  # If a particle is in the global best position, or stuck in personal best, jump around a bit. Otherwise do regular PSO
                 particle.isStuck = False
-                newVel = np.random.uniform(self.domain.ds, vMaxArr)*np.random.choice([-1,1], size=vMaxArr.shape) # New velocity is random number between grid spacing and vMax
+                newVel = np.random.uniform(self.domain.ds, vMaxArr) * np.random.choice([-1, 1],size=vMaxArr.shape)  # New velocity is random number between grid spacing and vMax
             else:
                 newVel = particle.velocity + cogComp + socComp
                 newVel[newVel > vMax] = vMax
@@ -352,6 +353,7 @@ class PSO:
             newVel[newVel > vMax] = vMax
             newVel[newVel < vMin] = vMin
 
+        # Return
         return newVel
 
     def run(self, checkNeighborhood=True, verbose=True, timeVarying=False, checkStuckParticle=True):
@@ -378,7 +380,8 @@ class PSO:
             for pIdx, particle in enumerate(self.particles):
 
                 # Generate new velocity
-                if all(self.getAllFitness(self.costArray) == 0):
+                # if all(self.getAllFitness(self.costArray) == 0):  # New, inferior way doesn't use random topology
+                if all(self.getAllFitness(i) == 0):     # Old, superior, way uses random topology
                     newVel = self.generateVelocity(particle, random=True)   # If all particles are reading 0, move randomly
                 else:
                     newVel = self.generateVelocity(particle)
@@ -481,14 +484,22 @@ class PSO:
         """
         return np.array([p.positionHistory[iteration, :] for p in self.particles])
 
-    def getAllFitness(self, costArray):
+    # def getAllFitness(self, costArray):   # New inferior way, doesn't utilize random topology
+    #     """
+    #     Return the fitness of all the particles at a given iteration.
+    #
+    #     :param costArray: Current cost array
+    #     :return: Array of current fitness of all particles at a given iteration
+    #     """
+    #     return np.array([p.getFitness(costArray) for p in self.particles])
+
+    def getAllFitness(self, iteration):     # Old superior way, basically a random topology
         """
         Return the fitness of all the particles at a given iteration.
-
-        :param costArray: Current cost array
-        :return: Array of current fitness of all particles at a given iteration
+        :param iteration: Iteration of PSO where fitness for all particles is desired
+        :return: Array of fitness of all particles at a give iteration
         """
-        return np.array([p.getFitness(costArray) for p in self.particles])
+        return np.array([p.fitnessHistory[iteration] for p in self.particles])
 
 
 def rebin(ndarray, dVal, operation='mean'):
