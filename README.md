@@ -1,6 +1,6 @@
 # Source Localization
 
-Use particle swarm optimization (PSO) and possible MCMC to perform source localization in 3D unsteady environments. Work in progress. Being completed in python in case some sweet libraries need to be used in the future
+Use particle swarm optimization (PSO) and possible MCMC to perform source localization in 3D unsteady environments. Work in progress. Being completed in python in case some sweet libraries need to be used in the future. While a few more commits will be pushed here, long-term future development will happen at https://github.com/UtahEFD/Source_Localization
 
 ## Data
 
