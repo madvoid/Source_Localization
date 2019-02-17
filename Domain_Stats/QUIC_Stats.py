@@ -18,7 +18,7 @@ from MatRead import readQUICMat
 
 if __name__ == "__main__":
     # Create save path
-    baseName = 'OKC'
+    baseName = 'Simple_R'
     basePath = '../Results/' + baseName + '/Statistics/' + baseName + '_'
 
     # Retrieve domain and data
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     for i in range(len(numParticlesList)):
         v = ~np.isnan(convIters[:, i])
         ax = sns.lineplot(x=distSort[~np.isnan(distSort[:,i]), i], y=np.array(range(1, sum(v)+1)) / float(sum(v)), ax=ax, label=f"{numParticlesList[i]} Particles ({sum(v)})")
-    ax.set_xlabel('deltaS/L')
+    ax.set_xlabel('$\Delta S/L$')
     ax.set_ylabel('Percent of Successful Runs')
     ax.set_title(f'(b)')
     ax.legend()
@@ -94,7 +94,7 @@ if __name__ == "__main__":
         v = ~np.isnan(convIters[:, i])
         vSum[i] = sum(v)
         plt.semilogx(distSort[~np.isnan(distSort[:,i]), i], np.array(range(1, sum(v)+1)) / float(sum(v)))
-    ax.set_xlabel('deltaS/L')
+    ax.set_xlabel('$\Delta S/L$')
     ax.set_ylabel('Percent of Successful Runs')
     ax.set_title(f'(c)')
     ax.legend([f"{numParticlesList[idx]} Particles ({int(vSum[idx])})" for idx, i in enumerate(numParticlesList)])
@@ -104,6 +104,8 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
     ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
+    ax.set_xlabel('x (m)')
+    ax.set_ylabel('y (m)')
     ax.set_title('Domain Map')
     fig.savefig(basePath + 'Map.pdf')
 

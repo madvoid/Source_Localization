@@ -9,6 +9,9 @@
 import os
 import sys
 import itertools
+import numpy.ma as ma
+import matplotlib.colors as colors
+from copy import copy
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
 
@@ -20,17 +23,18 @@ if __name__ == "__main__":
     # Create save path
     # baseName = 'OKC'
     # baseName = 'Quad_Corner'
-    baseName = 'Quad_Center'
+    # baseName = 'Quad_Center'
     # baseName = 'Quad_Edge'
     # baseName = 'Simple3'
+    baseName = 'Simple_R'
     basePath = '../Results/' + baseName + '/' + baseName + '_'
-    timeVaryingFlag = True
+    timeVaryingFlag = False
 
     # Set start index
     if timeVaryingFlag:
         timeStartIndex = 0
     else:
-        timeStartIndex = 3
+        timeStartIndex = 0
 
     # Retrieve domain and data
     quicDomain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/' + baseName + '/Data.mat')
@@ -51,7 +55,7 @@ if __name__ == "__main__":
     # Calculate points to show
     stopBuf = 50
     stopPoint = np.argmin(quicPSO.bestFitnessHistory) + stopBuf  # When to stop iterations
-    frameSave = np.round(np.linspace(0, stopPoint-stopBuf, num=6)).astype(int)
+    frameSave = np.round(np.linspace(0, stopPoint-stopBuf/2, num=6)).astype(int)
     frameCount = 0
 
     # Plot "built-in" plots
@@ -72,20 +76,33 @@ if __name__ == "__main__":
     sLocZ = quicDomain.sourceLoc[2]
 
     # Create 2d representation of 3d concentration, use log scale to highlight differences
-    C_Plot_2d = flattenPlotQuic(timeStartIndex, C_Plot)
+    C_Plot_2d = flattenPlotQuic(timeStartIndex, C_Plot, log=False)
+    C_Mask = ma.masked_array(np.zeros(C_Plot_2d.shape), mask=~np.isnan(C_Plot_2d))
+    cMin = np.nanmin(C_Plot_2d[C_Plot_2d > 0])
+    cMax = np.nanmax(C_Plot_2d)
 
     # Create Colors
-    concentrationMap = 'inferno'
-    lineMap = 'g'
-    zMap = 'winter'
+    # concentrationMap = 'viridis'
+    lineMap = 'b'
+    zMap = 'copper'
     sourceMap = 'g'
+    concentrationMap = copy(plt.cm.plasma)
+    concentrationMap.set_bad('w', 1.0)
+    maskMap = 'Paired'
+
 
     # Plot 2D representation of best points
     fig, ax = plt.subplots()
-    ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
+    fig.set_size_inches(6.4, 5.6)
+    ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Mask, cmap='gray')
+    conc = ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none', norm=colors.LogNorm(vmin=cMin, vmax=cMax))
+    manc = ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Mask, cmap=maskMap)
     ax.plot(quicPSO.bestPositionHistory[0:stopPoint, 0], quicPSO.bestPositionHistory[0:stopPoint, 1], color=lineMap, linestyle=':',
             marker='.')
     ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
+    cbar = plt.colorbar(conc, orientation='horizontal')
+    ax.set_xlabel('x (m)')
+    ax.set_ylabel('y (m)')
     ax.set_title('Best Location Convergence')
     fig.savefig(basePath + 'Best_Path.pdf')
     plt.show()
@@ -96,14 +113,28 @@ if __name__ == "__main__":
 
     # Animated plot
     fig, ax = plt.subplots()
+    fig.set_size_inches(6.4, 5.6)
     ax.set(xlim=(xMin, xMax), ylim=(yMin, yMax))
     ax.set_title('Live Convergence')
-    pcol = ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
+    ax.set_xlabel('x (m)')
+    ax.set_ylabel('y (m)')
+    pcol = ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none', norm=colors.LogNorm(vmin=cMin, vmax=cMax))
+    manc = ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Mask, cmap=maskMap)
+    cbar = plt.colorbar(pcol, orientation='horizontal')
+    cbar.set_label('Concentration ($g/m^3$)')
     ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
-    scat = ax.scatter(*quicPSO.getCurrentPoints(0)[:, 0:2].T, c=normalize(quicPSO.getCurrentPoints(0)[:, 2]), marker='.', cmap=zMap)
+    scat = ax.scatter(*quicPSO.getCurrentPoints(0)[:, 0:2].T, c=normalize(quicPSO.getCurrentPoints(0)[:, 2]), marker='.', cmap=zMap, s=75)
+    cbar2 = plt.colorbar(scat)
+    cbar2.set_label('UAV Elevation (m)')
+    cbarTicks = np.linspace(0, 1, 10)
+    cbar2.set_ticks(cbarTicks)
+    cbarTicks = np.linspace(zMin, zMax, 10)
+    cbarTickLabels = [f'{int(i):d}' for i in cbarTicks]
+    cbar2.set_ticklabels(cbarTickLabels)
     scatCol = plt.get_cmap(zMap)                            # To change colors in animate
     if timeVaryingFlag:
         simStopPoint = quicPSO.stopIter
+    plt.show()
 
     def animate(i):
         global currentPeriod
@@ -115,7 +146,8 @@ if __name__ == "__main__":
             if currentTime >= timeChanges[currentPeriod] and (i < simStopPoint):
                 currentPeriod += 1
                 C_Plot_2d = flattenPlotQuic(currentPeriod, C_Plot)
-                ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none')
+                ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none', norm=colors.LogNorm(vmin=cMin, vmax=cMax))
+                ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Mask, cmap=maskMap)
                 ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
                 scat.set_zorder(10)
             ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i} :: Time {currentTime} s')

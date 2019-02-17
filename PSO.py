@@ -429,7 +429,7 @@ class PSO:
                         print(f"Reached simulation duration end. Ending iterations.")
                         self.stopIter = i
                         simFinishedFlag = True
-                    elif (self.currentTime >= self.timeChanges[self.currentPeriod]):
+                    elif (self.currentTime >= self.timeChanges[self.currentPeriod]):    # TODO: Fix time that is displayed, double check!
                         self.currentPeriod += 1
                         self.costArray = self.totalCostArray[self.currentPeriod]
                         print(f"Averaging period finished. Switching to next cost function")
@@ -549,16 +549,21 @@ def reslice3D(X, dVal):
     return X[::dVal, ::dVal, ::dVal]
 
 
-def flattenPlotQuic(timeStep, cArr):
+def flattenPlotQuic(timeStep, cArr, log=True):
     """
     Flatten a 3D quic simulation at a given time to 2D for plotting
 
     :param timeStep: Time step of quic simulation to flatten
     :param cArr: quic simulation concentration array
+    :param log: Boolean variable indicating whether or not to take log of concentration
     :return: flattened array
     """
     with np.errstate(divide='ignore'):
-        f = np.log(np.mean(cArr[timeStep], 2))
+        if log:
+            f = np.log(np.mean(cArr[timeStep], 2))
+        else:
+            f = np.mean(cArr[timeStep], 2)
+            return f
     f[f == -np.inf] = 0
     f *= -1
     return f
