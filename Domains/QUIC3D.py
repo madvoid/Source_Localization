@@ -6,14 +6,11 @@
 # Purpose: Test PSO on a QUIC simulation
 # -------------------------------------------------------------------------------------------------
 
-import os
 import sys
-import itertools
 import numpy.ma as ma
 import matplotlib.colors as colors
 from copy import copy
 from matplotlib.animation import FuncAnimation
-from mpl_toolkits import mplot3d
 
 sys.path.insert(0, '../')
 from PSO import *
@@ -23,12 +20,12 @@ if __name__ == "__main__":
     # Create save path
     # baseName = 'OKC'
     # baseName = 'Quad_Corner'
-    # baseName = 'Quad_Center'
+    baseName = 'Quad_Center'
     # baseName = 'Quad_Edge'
     # baseName = 'Simple3'
-    baseName = 'Simple_R'
+    # baseName = 'Simple_R'
     basePath = '../Results/' + baseName + '/' + baseName + '_'
-    timeVaryingFlag = False
+    timeVaryingFlag = True
 
     # Set start index
     if timeVaryingFlag:
@@ -134,7 +131,7 @@ if __name__ == "__main__":
     scatCol = plt.get_cmap(zMap)                            # To change colors in animate
     if timeVaryingFlag:
         simStopPoint = quicPSO.stopIter
-    plt.show()
+    # plt.show()    # Weird, if this is uncommented the figure frames do not save (line 158) for some reason
 
     def animate(i):
         global currentPeriod
@@ -145,12 +142,12 @@ if __name__ == "__main__":
             currentTime = i*deltaT
             if currentTime >= timeChanges[currentPeriod] and (i < simStopPoint):
                 currentPeriod += 1
-                C_Plot_2d = flattenPlotQuic(currentPeriod, C_Plot)
+                C_Plot_2d = flattenPlotQuic(currentPeriod, C_Plot, log=False)
                 ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Plot_2d, cmap=concentrationMap, edgecolor='none', norm=colors.LogNorm(vmin=cMin, vmax=cMax))
                 ax.pcolormesh(X[:, :, 0], Y[:, :, 0], C_Mask, cmap=maskMap)
                 ax.scatter(sLocX, sLocY, c=sourceMap, marker='*', s=50)  # Actual best position
                 scat.set_zorder(10)
-            ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i} :: Time {currentTime} s')
+            ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i} :: Time {currentTime+600} s')
         else:
             ax.set_title(f'Live Convergence :: Num Particles = {numParticles} :: Iteration {i}')
         if frameCount < len(frameSave):

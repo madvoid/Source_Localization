@@ -325,7 +325,7 @@ class PSO:
         k = 0.05  # Velocity clamping constant, this makes a big difference!!!
         # vMax = 0.05 * (self.domain.maxLims - self.domain.minLims)
         # vMin = -1 * vMax
-        vMax = 15
+        vMax = self.vMax
         vMin = -1*vMax
         vMaxArr = vMax*np.ones(particle.velocity.shape)
 
@@ -356,7 +356,7 @@ class PSO:
         # Return
         return newVel
 
-    def run(self, checkNeighborhood=True, verbose=True, timeVarying=False, checkStuckParticle=True):
+    def run(self, checkNeighborhood=True, verbose=True, timeVarying=False, checkStuckParticle=True, vMax = 15):
         """
         Run the particle swarm algorithm. All parameters are set in __init__
 
@@ -364,7 +364,8 @@ class PSO:
         :param verbose: Flag to turn off/on printing
         :param timeVarying: Flag to tell PSO whether to use timeVarying plume or not
         :param checkStuckParticle: Flag to turn off/on stuck particle check routine
-        :return: Handle for figure
+        :param vMax: Maximum velocity of particle in any one component. e.g. if vMax = 15 m/s, the particle max speed is sqrt(15^2+15^2+15^2) = 25.98 m/s
+        :return: None
         """
         # Set altVector to function used to produce alternate velocity vector if original is not allowed
         # All functions should have same inputs, for now functions are a part of this class
@@ -374,6 +375,7 @@ class PSO:
         # Initialize local vars and prepare for runs
         simFinishedFlag = False     # When this flag becomes True, PSO will still iterate but the time varying plume won't change
         self.checkStuckParticle = checkStuckParticle
+        self.vMax = vMax
 
         # Start iterations
         for i in range(1, self.maxIter):

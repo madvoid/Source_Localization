@@ -3,7 +3,7 @@
 #
 # Author: Nipun Gunawardena
 #
-# Purpose: Run QUIC PSO many times to get statistics
+# Purpose: Run QUIC PSO many times to get statistics on how the maximum number of iterations affects performance
 # -------------------------------------------------------------------------------------------------
 
 import os
@@ -20,26 +20,25 @@ from MatRead import readQUICMat
 
 if __name__ == "__main__":
     # Create save path
-    baseName = 'Quad_Edge'
-    basePath = '../Results/' + baseName + '/Statistics/' + baseName + '_'
+    baseName = 'Quad_Center'
+    basePath = '../Results/' + baseName + '/MaxIter Statistics/' + baseName + '_'
 
     # Retrieve domain and data
     quicDomain, X, Y, Z, B, C, C_Plot = readQUICMat('../QUIC Data/' + baseName + '/Data.mat')
 
     # Prepare
-    numParticlesList = [10, 20, 30, 40, 50]
+    maxIterList = [100, 200, 300, 400, 500]
     numIters = 100
-    bestLocs = np.zeros((numIters, quicDomain.dimension, len(numParticlesList)))
-    bestIdx = np.zeros((numIters, quicDomain.dimension, len(numParticlesList)))
-    bestFitness = np.zeros((numIters, len(numParticlesList)))
-    convIters = np.zeros((numIters, len(numParticlesList)))
-    maxIters = 300
+    bestLocs = np.zeros((numIters, quicDomain.dimension, len(maxIterList)))
+    bestIdx = np.zeros((numIters, quicDomain.dimension, len(maxIterList)))
+    bestFitness = np.zeros((numIters, len(maxIterList)))
+    convIters = np.zeros((numIters, len(maxIterList)))
     tStart = 4
 
     # Iterate
-    for jIdx, j in tqdm(enumerate(numParticlesList)):
+    for jIdx, j in tqdm(enumerate(maxIterList)):
         for i in tqdm(range(numIters)):
-            quicPSO = PSO(C, quicDomain, numberParticles=j, maskArray=B, maximumIterations=maxIters, tStartIndex=tStart)
+            quicPSO = PSO(C, quicDomain, numberParticles=30, maskArray=B, maximumIterations=j, tStartIndex=tStart)
             quicPSO.run(checkNeighborhood=True, verbose=False, checkStuckParticle=True)
             bpIter = np.argmin(quicPSO.bestFitnessHistory)
             convIters[i, jIdx] = bpIter
@@ -47,9 +46,9 @@ if __name__ == "__main__":
             bestFitness[i, jIdx] = np.min(quicPSO.bestFitnessHistory)
 
     # Calculate nondimensional distance
-    dist = np.zeros((numIters, len(numParticlesList)))
+    dist = np.zeros((numIters, len(maxIterList)))
     distSort = np.zeros(dist.shape)
-    for jIdx, j in enumerate(numParticlesList):
+    for jIdx, j in enumerate(maxIterList):
         dist[:,jIdx] = np.linalg.norm(bestLocs[:,:,jIdx] - quicDomain.sourceLoc, ord=2, axis=1) / np.linalg.norm(quicDomain.maxLims - quicDomain.minLims, ord=2)
 
     # Create 2d representation of 3d concentration, use log scale to highlight differences
@@ -71,25 +70,29 @@ if __name__ == "__main__":
     convIters[convIters == 0] = np.nan      # 0 convergence iterations means plume wasn't found
     dist[np.isnan(convIters)] = np.nan      # Change distances to nans to for non-found plumes
 
+    # Function to convert v components to speed
+    def vToSpeed(v):
+        return np.sqrt(3*(v**2))
+
     # Prepare CDF for dist
-    for jIdx, j in enumerate(numParticlesList):
+    for jIdx, j in enumerate(maxIterList):
         distSort[:,jIdx] = np.sort(dist[:,jIdx])
     pDist = np.array(range(1, len(dist)+1)) / float(len(dist))
 
     sns.set()
     fig, ax = plt.subplots()
-    for i in range(len(numParticlesList)):
+    for i in range(len(maxIterList)):
         v = ~np.isnan(convIters[:,i])
-        sns.distplot(convIters[v,i], kde=False, norm_hist=False, label=f"{numParticlesList[i]} Particles ({sum(v)})")
+        sns.distplot(convIters[v,i], kde=False, norm_hist=False, label=f"Maximum Iterations = {maxIterList[i]} ({sum(v)})")
     ax.set_title(f'(a)')
-    ax.set_xlabel('Convergence Iterations (Limited to 300)')
+    ax.set_xlabel('Convergence Iterations')
     ax.legend()
     fig.savefig(basePath + 'ConvIters.pdf')
 
     fig, ax = plt.subplots()
-    for i in range(len(numParticlesList)):
+    for i in range(len(maxIterList)):
         v = ~np.isnan(convIters[:, i])
-        ax = sns.lineplot(x=distSort[~np.isnan(distSort[:,i]), i], y=np.array(range(1, sum(v)+1)) / float(sum(v)), ax=ax, label=f"{numParticlesList[i]} Particles ({sum(v)})")
+        ax = sns.lineplot(x=distSort[~np.isnan(distSort[:,i]), i], y=np.array(range(1, sum(v)+1)) / float(sum(v)), ax=ax, label=f"Maximum Iterations = {maxIterList[i]} ({sum(v)})")
     ax.set_xlabel('$\Delta S/L$')
     ax.set_ylabel('Percent of Successful Runs')
     ax.set_title(f'(b)')
@@ -97,18 +100,18 @@ if __name__ == "__main__":
     fig.savefig(basePath + 'FoundLocs.pdf')
 
     fig, ax = plt.subplots()
-    vSum = np.zeros(len(numParticlesList))
-    for i in range(len(numParticlesList)):
+    vSum = np.zeros(len(maxIterList))
+    for i in range(len(maxIterList)):
         v = ~np.isnan(convIters[:, i])
         vSum[i] = sum(v)
         plt.semilogx(distSort[~np.isnan(distSort[:,i]), i], np.array(range(1, sum(v)+1)) / float(sum(v)))
     ax.set_xlabel('$\Delta S/L$')
     ax.set_ylabel('Percent of Successful Runs')
     ax.set_title(f'(c)')
-    ax.legend([f"{numParticlesList[idx]} Particles ({int(vSum[idx])})" for idx, i in enumerate(numParticlesList)])
+    ax.legend([f"Maximum Iterations = {i} ({int(vSum[idx])})" for idx, i in enumerate(maxIterList)])
     fig.savefig(basePath + 'FoundLocsLog.pdf')
 
-    # Plot 2D representation of best points
+    # Plot map with no points for easy analysis
     sns.reset_orig()
     sns.reset_defaults()
     fig, ax = plt.subplots()

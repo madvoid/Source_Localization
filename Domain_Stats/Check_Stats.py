@@ -16,7 +16,7 @@ from MatRead import readQUICMat
 
 if __name__ == "__main__":
     # Create save path
-    baseName = 'Simple3'
+    baseName = 'Simple_R'
     basePath = '../Results/' + baseName + '/Check Statistics/' + baseName + '_'
 
     # Retrieve domain and data
@@ -48,6 +48,13 @@ if __name__ == "__main__":
     distOn = np.linalg.norm(bestLocsOn[:, :] - quicDomain.sourceLoc, ord=2, axis=1) / np.linalg.norm(quicDomain.maxLims - quicDomain.minLims, ord=2)
     distOff = np.linalg.norm(bestLocsOff[:, :] - quicDomain.sourceLoc, ord=2, axis=1) / np.linalg.norm(quicDomain.maxLims - quicDomain.minLims, ord=2)
 
+    # Clean data
+    convItersOn[convItersOn == 0] = np.nan      # 0 convergence iterations means plume wasn't found
+    distOn[np.isnan(convItersOn)] = np.nan      # Change distances to nans to for non-found plumes
+
+    convItersOff[convItersOff == 0] = np.nan      # 0 convergence iterations means plume wasn't found
+    distOff[np.isnan(convItersOff)] = np.nan      # Change distances to nans to for non-found plumes
+
     # Prepare CDF for distOn
     distSortOn = np.sort(distOn)
     distSortOff = np.sort(distOff)
@@ -56,17 +63,19 @@ if __name__ == "__main__":
     # Plot and save
     sns.set()
     fig, ax = plt.subplots()
-    sns.distplot(convItersOn, kde=False, norm_hist=False, label='Checks On')
-    sns.distplot(convItersOff, kde=False, norm_hist=False, label='Checks Off')
+    vOn = ~np.isnan(convItersOn)
+    vOff = ~np.isnan(convItersOff)
+    sns.distplot(convItersOn, kde=False, norm_hist=False, label=f'Checks On ({sum(vOn)})')
+    sns.distplot(convItersOff, kde=False, norm_hist=False, label=f'Checks Off ({sum(vOff)})')
     ax.set_title(f'(a)')
     ax.set_xlabel('Convergence Iterations (Limited to 300)')
     ax.legend()
     fig.savefig(basePath + 'Checks_' + 'ConvIters.pdf')
 
     fig, ax = plt.subplots()
-    ax = sns.lineplot(x = distSortOn, y = pDist, ax=ax, label='Checks On')
-    ax = sns.lineplot(x = distSortOff, y = pDist, ax=ax, label='Checks Off')
-    ax.set_xlabel('deltaS/L')
+    ax = sns.lineplot(x = distSortOn, y = pDist, ax=ax, label=f'Checks On ({sum(vOn)})')
+    ax = sns.lineplot(x = distSortOff, y = pDist, ax=ax, label=f'Checks Off ({sum(vOff)})')
+    ax.set_xlabel('$\Delta S/L$')
     ax.set_ylabel('Percent of Runs')
     ax.set_title('(b)')
     ax.legend()
@@ -75,7 +84,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     plt.semilogx(distSortOn, pDist)
     plt.semilogx(distSortOff, pDist)
-    ax.set_xlabel('deltaS/L')
+    ax.set_xlabel('$\Delta S/L$')
     ax.set_ylabel('Percent of Runs')
     ax.set_title('(c)')
     ax.legend(['Checks On', 'Checks Off'])
